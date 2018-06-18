@@ -4,10 +4,21 @@
 #include "common.h"
 #include "resource.h"
 #include "winsize.h"
+#include "clientview.h"
 
 #pragma comment(lib, "comctl32.lib")
 
-#define IDC_STATUS 1011
+#define POPU_MENU_ITEM_CONNECT                  (L"P2P连接   Ctrl+U")
+#define POPU_MENU_ITEM_CONNECT_ID               (WM_USER + 6050)
+
+#define POPU_MENU_ITEM_COPY                     (L"复制数据  Ctrl+C")
+#define POPU_MENU_ITEM_COPY_ID                  (WM_USER + 6051)
+
+#define POPU_MENU_ITEM_CLEAR                    (L"清空缓存  Ctrl+F")
+#define POPU_MENU_ITEM_CLEAR_ID                 (WM_USER + 6052)
+
+#define POPU_MENU_ITEM_SETTING                  (L"设置规则  Ctrl+T")
+#define POPU_MENU_ITEM_SETTING_ID               (WM_USER + 6053)
 
 extern HINSTANCE g_hInst;
 static HWND gs_hwnd = NULL;
@@ -15,17 +26,6 @@ static HWND gs_hlist = NULL;
 static HWND gs_hStatus = NULL;
 static HWND gs_hEdtCmd = NULL;
 static HWND gs_hBtnRun = NULL;
-
-static void _CreateStatusBar() {
-    HWND status = CreateStatusWindowA(WS_CHILD | WS_VISIBLE, NULL, gs_hwnd, IDC_STATUS);
-    int wide[3] = {0};
-    int length = 0;
-    wide[0] = 280;
-    wide[1] = wide[0] + 480;
-    wide[2]= wide[1] + 360;
-    SendMessage(status, SB_SETPARTS, sizeof(wide) / sizeof(int), (LPARAM)(LPINT)wide); 
-    gs_hStatus = status;
-}
 
 static void _InitListCtrl() {
     ListView_SetExtendedListViewStyle(gs_hlist, LVS_EX_DOUBLEBUFFER | LVS_EX_FULLROWSELECT | LVS_EX_LABELTIP);
@@ -93,11 +93,58 @@ static void _OnSize(){
 }
 
 static void _OnCommand(HWND hwnd, WPARAM wp, LPARAM lp)
-{}
+{
+    DWORD id = LOWORD(wp);
+    switch (id) {
+        case POPU_MENU_ITEM_CONNECT_ID:
+            ShowClientView(gs_hwnd);
+            break;
+        case POPU_MENU_ITEM_CLEAR_ID:
+            break;
+        case POPU_MENU_ITEM_COPY_ID:
+            break;
+        case POPU_MENU_ITEM_SETTING_ID:
+            break;
+        default:
+            break;
+    }
+}
 
 static void _OnClose(HWND hwnd, WPARAM wp, LPARAM lp)
 {
     EndDialog(gs_hwnd, 0);
+}
+
+static void _OnListViewRClick(WPARAM wp, LPARAM lp) {
+    POINT pt = {0};
+    GetCursorPos(&pt);
+
+    HMENU hMenu = CreatePopupMenu();
+    AppendMenuW(hMenu, MF_ENABLED, POPU_MENU_ITEM_CONNECT_ID, POPU_MENU_ITEM_CONNECT);
+    AppendMenuW(hMenu, MF_ENABLED, POPU_MENU_ITEM_COPY_ID, POPU_MENU_ITEM_COPY);
+    AppendMenuW(hMenu, MF_ENABLED, POPU_MENU_ITEM_CLEAR_ID, POPU_MENU_ITEM_CLEAR);
+    AppendMenuW(hMenu, MF_ENABLED, POPU_MENU_ITEM_SETTING_ID, POPU_MENU_ITEM_SETTING);
+
+    TrackPopupMenu(hMenu, TPM_CENTERALIGN, pt.x, pt.y, 0, gs_hwnd, 0);
+    DestroyMenu(hMenu);
+}
+
+static void _OnNotify(WPARAM wp, LPARAM lp) {
+    LPNMHDR msg = (LPNMHDR)lp;
+    if (!msg || gs_hlist != msg->hwndFrom)
+    {
+        return;
+    }
+    switch(msg->code)
+    {
+    case NM_RCLICK:
+        {
+            _OnListViewRClick(wp, lp);
+        }
+        break;
+    default:
+        break;
+    }
 }
 
 static INT_PTR CALLBACK _DialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -112,6 +159,8 @@ static INT_PTR CALLBACK _DialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
         break;
     case WM_SIZE:
         _OnSize();
+    case WM_NOTIFY:
+        _OnNotify(wParam, lParam);
         break;
     case  WM_CLOSE:
         _OnClose(hwndDlg, wParam, lParam);

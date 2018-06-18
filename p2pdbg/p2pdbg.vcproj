@@ -41,6 +41,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
+				AdditionalIncludeDirectories="./lib"
 				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -171,6 +172,14 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
+				RelativePath=".\clientview.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\clientview.h"
+				>
+			</File>
+			<File
 				RelativePath=".\dbgview.cpp"
 				>
 			</File>
@@ -179,7 +188,23 @@
 				>
 			</File>
 			<File
+				RelativePath=".\logic.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\logic.h"
+				>
+			</File>
+			<File
 				RelativePath=".\main.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\udpserv.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\udpserv.h"
 				>
 			</File>
 		</Filter>
@@ -188,6 +213,10 @@
 			Filter="h;hpp;hxx;hm;inl;inc;xsd"
 			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}"
 			>
+			<File
+				RelativePath=".\cmddef.h"
+				>
+			</File>
 			<File
 				RelativePath=".\resource.h"
 				>
@@ -211,21 +240,73 @@
 			Name="lib"
 			>
 			<File
-				RelativePath=".\common.cpp"
+				RelativePath=".\lib\common.cpp"
 				>
 			</File>
 			<File
-				RelativePath=".\common.h"
+				RelativePath=".\lib\common.h"
 				>
 			</File>
 			<File
-				RelativePath=".\winsize.cpp"
+				RelativePath=".\lib\winsize.cpp"
 				>
 			</File>
 			<File
-				RelativePath=".\winsize.h"
+				RelativePath=".\lib\winsize.h"
 				>
 			</File>
+			<Filter
+				Name="json"
+				>
+				<File
+					RelativePath=".\lib\json\config.h"
+					>
+				</File>
+				<File
+					RelativePath=".\lib\json\features.h"
+					>
+				</File>
+				<File
+					RelativePath=".\lib\json\forwards.h"
+					>
+				</File>
+				<File
+					RelativePath=".\lib\json\json.h"
+					>
+				</File>
+				<File
+					RelativePath=".\lib\json\json_batchallocator.h"
+					>
+				</File>
+				<File
+					RelativePath=".\lib\json\json_reader.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\lib\json\json_value.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\lib\json\json_valueiterator.inl"
+					>
+				</File>
+				<File
+					RelativePath=".\lib\json\json_writer.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\lib\json\reader.h"
+					>
+				</File>
+				<File
+					RelativePath=".\lib\json\value.h"
+					>
+				</File>
+				<File
+					RelativePath=".\lib\json\writer.h"
+					>
+				</File>
+			</Filter>
 		</Filter>
 	</Files>
 	<Globals>

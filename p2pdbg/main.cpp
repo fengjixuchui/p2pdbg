@@ -15,6 +15,9 @@ HINSTANCE g_hInst = NULL;
 
 int WINAPI WinMain(HINSTANCE hT, HINSTANCE hP, LPSTR szCmdLine, int iShow)
 {
+    WSADATA wsaData;
+    WSAStartup( MAKEWORD(2, 2), &wsaData);
+
     g_hInst = hT;
     ShowDbgViw();
     return 0;
