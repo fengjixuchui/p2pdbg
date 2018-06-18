@@ -110,10 +110,19 @@ void CWorkLogic::OnRecv(const string &strData, const string &strAddr, USHORT uPo
         GetInstance()->OnSingleData(strSub, strAddr, uPort);
     }
 }
+
 /**注册用户**/
+/**
+"clientDesc":"设备描述",
+"ipInternal":"内部ip",
+"portInternal":"内部的端口"
+*/
 void CWorkLogic::RegisterUser(){
     Value vJson;
     GetJsonPack(vJson, CMD_C2S_LOGIN);
+    vJson["clientDesc"] = DBGDESC;
+    vJson["ipInternal"] = m_strLocalIp;
+    vJson["portInternal"] = m_uLocalPort;
     SendTo(m_strServIp, m_uServPort, FastWriter().write(vJson));
 }
 

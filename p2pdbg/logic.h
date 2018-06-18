@@ -15,6 +15,7 @@ using namespace Json;
 #define PORT_SERV           9951
 #define PORT_LOCAL          8807
 #define UNIQUE              "9ffab3fb-8621-4582-8937-44af8015a1d8"
+#define DBGDESC             "p2pdbg"
 
 struct ClientInfo {
     string m_strUnique;
