@@ -12,6 +12,7 @@ public:
     CUdpServ();
     bool StartServ(USHORT uLocalPort, pfnOnRecv pfn);
     bool SendTo(const string &strIp, USHORT uPort, const string &strData);
+    string CUdpServ::GetLocalIp();
 
 protected:
     static DWORD WINAPI WorkThread(LPVOID pParam);
@@ -25,7 +26,7 @@ protected:
     bool m_bInit;
     SOCKET m_clientSock;
 
-    HANDLE m_thread;
+    HANDLE m_hWorkThread;
     pfnOnRecv m_pfn;
 };
 #endif

@@ -4,9 +4,11 @@
 #include <Windows.h>
 #include <string>
 #include <map>
+#include <json/json.h>
 #include "udpserv.h"
 
 using namespace std;
+using namespace Json;
 
 #define PACKET_STARTMARK    "<Protocol Start>"
 #define IP_SERV             "112.232.14.36"
@@ -39,18 +41,37 @@ protected:
 public:
     static CWorkLogic *GetInstance();
     static void WINAPI OnRecv(const string &strData, const string &strAddr, USHORT uPort);
-    void Send(const string &strData, const string &strAddr, USHORT uPort);
+    void StartWork();
+    void SendTo(const string &strAddr, USHORT uPort, const string &strData);
     bool Connect(const string &strUnique, DWORD dwTimeOut);
 
 protected:
     void GetJsonPack(Value &v, const string &strDataType);
     void SetServAddr(const string &strServIp, USHORT uServPort);
+    /**注册用户**/
+    void RegisterUser();
+    /**获取用户列表**/
+    void GetUserList();
     void OnSingleData(const string &strData, const string &strAddr, USHORT uPort);
+    static DWORD WINAPI WorkThread(LPVOID pParam);
+    void OnSendServHeartbeat();
+    void OnSendP2pHearbeat();
 
 protected:
+    bool m_bInit;
+    HANDLE m_hWorkThread;
     HANDLE m_hP2pNotify;
+    string m_strLocalIp;
+    USHORT m_uLocalPort;
     string m_strServIp;
     USHORT m_uServPort;
+
+    /**p2p数据**/
+    bool m_bP2pStat;
+    string m_strP2pIp;
+    USHORT m_uP2pPort;
+    ClientInfo m_p2pInfo;
+
     map<string, ClientInfo> m_clientInfos;
     CUdpServ *m_pUdpServ;
     static CWorkLogic *ms_inst;

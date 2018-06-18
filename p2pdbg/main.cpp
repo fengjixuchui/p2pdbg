@@ -1,5 +1,7 @@
+#include <WinSock2.h>
 #include <Windows.h>
 #include "dbgview.h"
+#include "logic.h"
 
 HINSTANCE g_hInst = NULL;
 
@@ -19,6 +21,7 @@ int WINAPI WinMain(HINSTANCE hT, HINSTANCE hP, LPSTR szCmdLine, int iShow)
     WSAStartup( MAKEWORD(2, 2), &wsaData);
 
     g_hInst = hT;
+    CWorkLogic::GetInstance()->StartWork();
     ShowDbgViw();
     return 0;
 }

@@ -1,5 +1,6 @@
 #include <WinSock2.h>
 #include "udpserv.h"
+#include "logic.h"
 
 #pragma comment(lib, "Ws2_32.lib")
 
@@ -8,8 +9,10 @@ CUdpServ::CUdpServ() {
     m_bInit = false;
     m_uLocalPort = 0;
     m_uServPort = 0;
-    m_thread = NULL;
+    m_hWorkThread = NULL;
     m_pfn = NULL;
+    m_strServIp = IP_SERV;
+    m_uServPort = PORT_SERV;
 }
 
 DWORD CUdpServ::WorkThread(LPVOID pParam) {
@@ -38,6 +41,22 @@ DWORD CUdpServ::WorkThread(LPVOID pParam) {
     return 0;
 }
 
+string CUdpServ::GetLocalIp()
+{
+    struct sockaddr_in remoteAddr;
+    struct sockaddr_in localAddr;
+
+    memset (&remoteAddr, 0, sizeof(struct sockaddr));  
+    remoteAddr.sin_family = AF_INET;  
+    remoteAddr.sin_port = htons (PORT_SERV);
+    remoteAddr.sin_addr.S_un.S_addr = inet_addr(IP_SERV);
+
+    int len = sizeof(sockaddr_in);
+    connect (m_clientSock, (struct sockaddr *)&remoteAddr, len);
+    getsockname(m_clientSock, (struct sockaddr *)&localAddr, &len);
+    return inet_ntoa(localAddr.sin_addr);
+}
+
 bool CUdpServ::StartServ(USHORT uLocalPort, pfnOnRecv pfn) {
     if (m_bInit){
         return true;
@@ -47,25 +66,21 @@ bool CUdpServ::StartServ(USHORT uLocalPort, pfnOnRecv pfn) {
     m_uLocalPort = uLocalPort;
     m_pfn = pfn;
 
-    SOCKADDR_IN addrServ = {0};
-    addrServ.sin_addr.S_un.S_addr = htonl(INADDR_ANY);
-    addrServ.sin_family = AF_INET;
-    addrServ.sin_port = htons(uLocalPort);
+    SOCKADDR_IN localAddr = {0};
+    localAddr.sin_addr.S_un.S_addr = htonl(INADDR_ANY);
+    localAddr.sin_family = AF_INET;
+    localAddr.sin_port = htons(PORT_LOCAL);
+    bind(m_clientSock, (sockaddr *)&localAddr, sizeof(localAddr));
 
-    int e = bind(m_clientSock, (sockaddr *)&addrServ, sizeof(addrServ));
-
-    sockaddr_in loalAddr = {0};
-    int length = sizeof(loalAddr);
-    getsockname(m_clientSock, (sockaddr *)&loalAddr, &length);
-    m_strLocalIp = inet_ntoa(loalAddr.sin_addr);
-
+    m_strLocalIp = GetLocalIp();
     m_bInit = true;
-    m_thread = CreateThread(NULL, 0, WorkThread, this, 0, NULL);
+    m_hWorkThread = CreateThread(NULL, 0, WorkThread, this, 0, NULL);
     return true;
 }
 bool CUdpServ::SendTo(const string &strIp, USHORT uPort, const string &strData)
 {
     SOCKADDR_IN addr = {0};
+    addr.sin_family = AF_INET;
     addr.sin_addr.S_un.S_addr = inet_addr(strIp.c_str());
     addr.sin_port = htons(uPort);
     sendto(m_clientSock, strData.c_str(), strData.length(), 0, (const sockaddr *)&addr, sizeof(addr));

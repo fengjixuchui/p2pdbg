@@ -4,6 +4,7 @@
 协议格式Json格式
 <Protocol Start>
 */
+#define CMD_START_MARK          "<Protocol Start>"
 
 /**终端到服务端指令**/
 /**
@@ -88,4 +89,14 @@
 }
 */
 #define CMD_C2C_TESTNETPASS     "testNetPass_c2c"
+
+/**
+终端到终端心跳
+{
+    "dataType":"heartbeat_c2c",
+    "unique":"终端标识",
+    "time":"发送时间"
+}
+*/
+#define CMD_C2C_HEARTBEAT       "heartbeat_c2c"
 #endif
