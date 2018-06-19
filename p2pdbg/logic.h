@@ -11,8 +11,8 @@ using namespace std;
 using namespace Json;
 
 #define PACKET_STARTMARK    "<Protocol Start>"
-#define IP_SERV             "112.232.14.36"
-#define PORT_SERV           9951
+#define IP_SERV             "10.10.16.38"
+#define PORT_SERV           9955
 #define PORT_LOCAL          8807
 #define UNIQUE              "9ffab3fb-8621-4582-8937-44af8015a1d8"
 #define DBGDESC             "p2pdbg"

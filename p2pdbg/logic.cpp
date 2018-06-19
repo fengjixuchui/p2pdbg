@@ -150,39 +150,7 @@ void CWorkLogic::OnSingleData(const string &strData, const string &strAddr, USHO
         string strUnique = vJson.get("unique", "").asString();
         int id = vJson.get("id", 0).asUInt();
 
-        if (strDataType == CMD_C2S_LOGIN)
-        {
-            ClientInfo info;
-            info.m_strUnique = strUnique;
-            info.m_strIpInternal = vJson.get("ipInternal", "").asString();
-            info.m_uPortInternal = vJson.get("portInternal", 0).asUInt();
-            info.m_strIpExternal = strAddr;
-            info.m_uPortExternal = uPort;
-            info.m_uLastHeartbeat = GetTickCount();
-        } else if (strDataType == CMD_C2S_LOGOUT)
-        {
-            if (m_clientInfos.end() != m_clientInfos.find(strUnique))
-            {
-                m_clientInfos.erase(strUnique);
-            }
-        } else if (strDataType == CMD_C2S_GETCLIENTS)
-        {
-            Value vResp;
-            vResp["id"] = id;
-            vResp["status"] = 0;
-            Value vClient;
-
-            for (map<string, ClientInfo>::const_iterator it = m_clientInfos.begin() ; it != m_clientInfos.end() ; it++)
-            {
-                vClient["unique"] = it->second.m_strUnique;
-                vClient["ipInternal"] = it->second.m_strIpInternal;
-                vClient["portInternal"] = it->second.m_uPortInternal;
-                vClient["ipExternal"] = it->second.m_strIpExternal;
-                vClient["portExternal"] = it->second.m_uPortExternal;
-                vResp["client"].append(vClient);
-            }
-            SendTo(strAddr, uPort, FastWriter().write(vResp));
-        } else if (strDataType == CMD_C2S_TESTNETPASS)
+        if (strDataType == CMD_S2C_TESTNETPASS)
         {
         } else if (strDataType == CMD_C2C_TESTNETPASS)
         {

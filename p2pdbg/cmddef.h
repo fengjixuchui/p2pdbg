@@ -69,10 +69,13 @@
 终端请求net穿透
 {
     "dataType":"testNetPass_s2c",
-    "unique":"终端标识",
     "time":"发送时间",
 
-    "dstClient":""
+    "srcUnique":"",
+    "srcInternalIp":"",
+    "srcInternalPort":1234,
+    "srcExternalIp:"",
+    "srcExternalPort":1234
 }
 */
 #define CMD_S2C_TESTNETPASS     "testNetPass_s2c"
