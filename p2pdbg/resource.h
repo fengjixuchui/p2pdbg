@@ -15,6 +15,8 @@
 #define IDC_EDIT1                       1008
 #define IDC_SELECT_STATUS               1008
 #define IDC_SELECT_CONNECT              1009
+#define IDC_SELECT_CONNECT2             1010
+#define IDC_SELECT_REFUSH               1010
 
 // Next default values for new objects
 // 
@@ -22,7 +24,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        104
 #define _APS_NEXT_COMMAND_VALUE         40001
-#define _APS_NEXT_CONTROL_VALUE         1010
+#define _APS_NEXT_CONTROL_VALUE         1011
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

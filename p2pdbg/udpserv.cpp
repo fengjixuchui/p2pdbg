@@ -43,17 +43,24 @@ DWORD CUdpServ::WorkThread(LPVOID pParam) {
 
 string CUdpServ::GetLocalIp()
 {
+    return m_strLocalIp;
+}
+
+string CUdpServ::GetLocalIpInternal()
+{
+    SOCKET tmp = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     struct sockaddr_in remoteAddr;
     struct sockaddr_in localAddr;
 
     memset (&remoteAddr, 0, sizeof(struct sockaddr));  
     remoteAddr.sin_family = AF_INET;  
-    remoteAddr.sin_port = htons (PORT_SERV);
-    remoteAddr.sin_addr.S_un.S_addr = inet_addr(IP_SERV);
+    remoteAddr.sin_port = htons (1234);
+    remoteAddr.sin_addr.S_un.S_addr = inet_addr("1.2.3.4");
 
     int len = sizeof(sockaddr_in);
-    connect (m_clientSock, (struct sockaddr *)&remoteAddr, len);
-    getsockname(m_clientSock, (struct sockaddr *)&localAddr, &len);
+    connect(tmp, (struct sockaddr *)&remoteAddr, len);
+    getsockname(tmp, (struct sockaddr *)&localAddr, &len);
+    closesocket(tmp);
     return inet_ntoa(localAddr.sin_addr);
 }
 
@@ -72,11 +79,12 @@ bool CUdpServ::StartServ(USHORT uLocalPort, pfnOnRecv pfn) {
     localAddr.sin_port = htons(PORT_LOCAL);
     bind(m_clientSock, (sockaddr *)&localAddr, sizeof(localAddr));
 
-    m_strLocalIp = GetLocalIp();
+    m_strLocalIp = GetLocalIpInternal();
     m_bInit = true;
     m_hWorkThread = CreateThread(NULL, 0, WorkThread, this, 0, NULL);
     return true;
 }
+
 bool CUdpServ::SendTo(const string &strIp, USHORT uPort, const string &strData)
 {
     SOCKADDR_IN addr = {0};

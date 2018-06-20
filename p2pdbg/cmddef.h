@@ -38,6 +38,10 @@
     "dataType":"heartbeat_c2s",
     "unique":"终端标识",
     "time":"发送时间"
+
+    "clientDesc":"设备描述",
+    "ipInternal":"内部ip",
+    "portInternal":"内部的端口"
 }
 */
 #define CMD_C2S_HEARTBEAT       "heartbeat_c2s"
@@ -79,6 +83,33 @@
 }
 */
 #define CMD_S2C_TESTNETPASS     "testNetPass_s2c"
+
+/**
+服务端到终端心跳回执
+{
+    "dataType":"heartbeat_s2c",
+    "time":"发送时间",
+
+    "clientCount":用户数量,
+    "clientUpdateTime":客户端信息最后更新时间
+}
+*/
+#define CMD_S2C_HEARTBEAT      "heartbeat_s2c"
+
+/**
+服务端到终端请求用户列表回执
+{
+    "dataType":"getUserList_s2c",
+    "time":"发送时间",
+
+    "clients":
+    [
+        {"unique":"", "clientDesc":"", "ipInternal":"", "portInternal":"", "ipExternal":"", "portExternal":""},
+        ...
+    ]
+}
+*/
+#define CMD_S2C_GETCLIENTS      "getUserList_s2c"
 
 /**终端到终端指令**/
 /**

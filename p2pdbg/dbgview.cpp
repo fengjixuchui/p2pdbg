@@ -130,13 +130,23 @@ static void _OnListViewRClick(WPARAM wp, LPARAM lp) {
 }
 
 static void _OnNotify(WPARAM wp, LPARAM lp) {
-    LPNMHDR msg = (LPNMHDR)lp;
-    if (!msg || gs_hlist != msg->hwndFrom)
+    if (!lp)
     {
         return;
     }
-    switch(msg->code)
+
+    switch (((LPNMHDR) lp)->code)
     {
+    case LVN_GETDISPINFO:
+        {
+            NMLVDISPINFO* ptr = NULL;
+            ptr = (NMLVDISPINFOW *)lp;
+
+            if (ptr->hdr.hwndFrom == gs_hlist)
+            {
+            }
+        }
+        break;
     case NM_RCLICK:
         {
             _OnListViewRClick(wp, lp);
@@ -159,6 +169,7 @@ static INT_PTR CALLBACK _DialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
         break;
     case WM_SIZE:
         _OnSize();
+        break;
     case WM_NOTIFY:
         _OnNotify(wParam, lParam);
         break;

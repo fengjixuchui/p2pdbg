@@ -14,9 +14,10 @@ CWorkLogic::CWorkLogic(){
     m_bInit = false;
     m_strServIp = IP_SERV;
     m_uServPort = PORT_SERV;
+    m_pHandler = NULL;
 }
 
-void CWorkLogic::StartWork() {
+void CWorkLogic::StartWork(CDataHandler *pHandler) {
     if (m_bInit)
     {
         return;
@@ -26,8 +27,18 @@ void CWorkLogic::StartWork() {
     m_pUdpServ->StartServ(PORT_LOCAL, OnRecv);
     m_uLocalPort = PORT_LOCAL;
     m_strLocalIp = m_pUdpServ->GetLocalIp();
+    m_pHandler = pHandler;
     RegisterUser();
+    RequestClients();
     m_hWorkThread = CreateThread(NULL, 0, WorkThread, this, 0, NULL);
+}
+
+string CWorkLogic::GetDevDesc()
+{
+    string strDesc = DBGDESC;
+    strDesc += "-";
+    strDesc += m_strLocalIp;
+    return strDesc;
 }
 
 void CWorkLogic::SetServAddr(const string &strServIp, USHORT uServPort) {
@@ -56,8 +67,13 @@ bool CWorkLogic::Connect(const string &strUnique, DWORD dwTimeOut){
         DWORD dwStart = GetTickCount();
         ClientInfo info = m_clientInfos[strUnique];
 
-        Value vTest;
-        GetJsonPack(vTest, CMD_C2C_TESTNETPASS);
+        Value vToServ;
+        GetJsonPack(vToServ, CMD_C2S_TESTNETPASS);
+        vToServ["dstClient"] = strUnique;
+
+        Value vToClient;
+        GetJsonPack(vToClient, CMD_C2C_TESTNETPASS);
+
         ResetEvent(m_hP2pNotify);
         while (true) {
             if ((GetTickCount() - dwStart) >= dwTimeOut)
@@ -65,8 +81,9 @@ bool CWorkLogic::Connect(const string &strUnique, DWORD dwTimeOut){
                 return false;
             }
 
-            SendTo(info.m_strIpInternal, info.m_uPortInternal, FastWriter().write(vTest));
-            SendTo(info.m_strIpExternal, info.m_uPortExternal, FastWriter().write(vTest));
+            SendTo(m_strServIp, m_uServPort, FastWriter().write(vToServ));
+            SendTo(info.m_strIpInternal, info.m_uPortInternal, FastWriter().write(vToClient));
+            SendTo(info.m_strIpExternal, info.m_uPortExternal, FastWriter().write(vToClient));
 
             if (WaitForSingleObject(m_hP2pNotify, 100) == WAIT_OBJECT_0)
             {
@@ -79,6 +96,16 @@ bool CWorkLogic::Connect(const string &strUnique, DWORD dwTimeOut){
     {
         return false;
     }
+}
+
+vector<ClientInfo> CWorkLogic::GetClientList()
+{
+    vector<ClientInfo> vResult;
+    for (map<string, ClientInfo>::const_iterator it = m_clientInfos.begin() ; it != m_clientInfos.end() ; it++)
+    {
+        vResult.push_back(it->second);
+    }
+    return vResult;
 }
 
 void CWorkLogic::OnRecv(const string &strData, const string &strAddr, USHORT uPort)
@@ -127,10 +154,41 @@ void CWorkLogic::RegisterUser(){
 }
 
 /**获取用户列表**/
-void CWorkLogic::GetUserList(){
+void CWorkLogic::RequestClients(){
     Value vJson;
     GetJsonPack(vJson, CMD_C2S_GETCLIENTS);
     SendTo(m_strServIp, m_uServPort, FastWriter().write(vJson));
+}
+
+/**
+服务端到终端请求用户列表回执
+{
+    "dataType":"getUserList_s2c",
+    "time":"发送时间",
+
+    "clients":
+    [
+        {"unique":"", "clientDesc":"", "ipInternal":"", "portInternal":"", "ipExternal":"", "portExternal":""},
+        ...
+    ]
+}
+*/
+void CWorkLogic::OnGetClients(const Value &vJson)
+{
+    m_clientInfos.clear();
+    Value vClients = vJson["clients"];
+    for (size_t i = 0 ; i < vClients.size() ; i++)
+    {
+        Value vSingle = vClients[i];
+        ClientInfo info;
+        info.m_strUnique = vSingle["unique"].asString();
+        info.m_strClientDesc = vSingle["clientDesc"].asString();
+        info.m_strIpInternal = vSingle["ipInternal"].asString();
+        info.m_uPortInternal = vSingle["portInternal"].asUInt();
+        info.m_strIpExternal = vSingle["ipExternal"].asString();
+        info.m_uPortExternal = vSingle["portExternal"].asUInt();
+        m_clientInfos[info.m_strUnique] = info;
+    }
 }
 
 void CWorkLogic::OnSingleData(const string &strData, const string &strAddr, USHORT uPort)
@@ -155,15 +213,33 @@ void CWorkLogic::OnSingleData(const string &strData, const string &strAddr, USHO
         } else if (strDataType == CMD_C2C_TESTNETPASS)
         {
             SetEvent(m_hP2pNotify);
+        } else if (strDataType == CMD_S2C_GETCLIENTS)
+        {
+            OnGetClients(vJson);
         }
     } catch (std::exception &e) {
         string str = e.what();
     }
 }
 
+/**
+终端到服务端的心跳
+{
+    "dataType":"heartbeat_c2s",
+    "unique":"终端标识",
+    "time":"发送时间"
+
+    "clientDesc":"设备描述",
+    "ipInternal":"内部ip",
+    "portInternal":"内部的端口"
+}
+*/
 void CWorkLogic::OnSendServHeartbeat() {
     Value vJson;
     GetJsonPack(vJson, CMD_C2S_HEARTBEAT);
+    vJson["clientDesc"] = GetDevDesc();
+    vJson["ipInternal"] = m_strLocalIp;
+    vJson["portInternal"] = m_uLocalPort;
     SendTo(m_strServIp, m_uServPort, FastWriter().write(vJson));
 }
 
@@ -181,7 +257,6 @@ DWORD CWorkLogic::WorkThread(LPVOID pParam)
     CWorkLogic *ptr = (CWorkLogic *)pParam;
     while (true) {
         Sleep(1000);
-        ptr->GetUserList();
         ptr->OnSendServHeartbeat();
         ptr->OnSendP2pHearbeat();
     }

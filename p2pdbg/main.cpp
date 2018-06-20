@@ -21,7 +21,7 @@ int WINAPI WinMain(HINSTANCE hT, HINSTANCE hP, LPSTR szCmdLine, int iShow)
     WSAStartup( MAKEWORD(2, 2), &wsaData);
 
     g_hInst = hT;
-    CWorkLogic::GetInstance()->StartWork();
+    CWorkLogic::GetInstance()->StartWork(NULL);
     ShowDbgViw();
     return 0;
 }

@@ -248,6 +248,22 @@
 				>
 			</File>
 			<File
+				RelativePath=".\lib\gdcharconv.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\lib\gdcharconv.h"
+				>
+			</File>
+			<File
+				RelativePath=".\lib\mstring.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\lib\mstring.h"
+				>
+			</File>
+			<File
 				RelativePath=".\lib\winsize.cpp"
 				>
 			</File>
