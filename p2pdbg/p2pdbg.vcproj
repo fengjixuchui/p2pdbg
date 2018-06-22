@@ -207,6 +207,10 @@
 				RelativePath=".\udpserv.h"
 				>
 			</File>
+			<File
+				RelativePath=".\ups.cpp"
+				>
+			</File>
 		</Filter>
 		<Filter
 			Name="Í·ÎÄ¼þ"
@@ -219,6 +223,10 @@
 			</File>
 			<File
 				RelativePath=".\resource.h"
+				>
+			</File>
+			<File
+				RelativePath=".\ups.h"
 				>
 			</File>
 		</Filter>
