@@ -268,11 +268,11 @@
 				>
 			</File>
 			<File
-				RelativePath=".\ups.cpp"
+				RelativePath=".\lib\ups.cpp"
 				>
 			</File>
 			<File
-				RelativePath=".\ups.h"
+				RelativePath=".\lib\ups.h"
 				>
 			</File>
 			<File

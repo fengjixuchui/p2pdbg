@@ -21,7 +21,7 @@ using namespace std;
 
 #define MAGIC_NUMBER            0xf1f3              //封包识别数
 #define TIMESLICE_STAT          1000                //状态检查时间片
-#define PACKET_LIMIT            512                 //单个逻辑包大小限制
+#define PACKET_LIMIT            512                 //单个逻辑包大小限制(根据因特网MTU)
 #define MAX_TESTCOUNT           3                   //最多尝试重传次数
 #define MAX_RECVTIME            3000                //接收方丢包最多等待时间
 
