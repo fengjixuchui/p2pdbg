@@ -104,6 +104,8 @@ struct PacketRecvDesc
 struct PackageRecvCache
 {
     string m_strUnique;                     //连接标识
+    string m_strIp;                         //连接地址
+    unsigned short m_uPort;                 //连接端口
     int m_iFirstSerial;                     //第一个序号
     vector<PacketRecvDesc> m_recvDescSet;   //缓冲区中的封包集合
     vector<string> m_CompleteSet;           //已完成的封包集合
@@ -140,7 +142,7 @@ protected:
     bool OnCheckPacketRecvStat();
     bool OnRecvUdpData(const char *addr, unsigned short uPort, const char *pData, int iLength);
     bool OnRecvComplete(PackageRecvCache &recvCache);
-    bool OnRecvUpsData(const string &strUnique, UpsHeader *pHeader, const string &strData);
+    bool OnRecvUpsData(const char *addr, unsigned short uPort, const string &strUnique, UpsHeader *pHeader, const string &strData);
     bool OnRecvUpsAck(const string &strUnique, UpsHeader *pHeader);
     bool OnRecvPostData(const string &strUnique, const string &strData);
     UpsHeader *PacketHeader(unsigned short uOpt, unsigned short uSerial, unsigned short uLength, UpsHeader *ptr);
@@ -160,8 +162,12 @@ protected:
     HANDLE m_hStatThread;
     HANDLE m_hStatEvent;
     HANDLE m_hStopEvent;
+    HANDLE m_hRecvEvent;
 
+    //发送封包缓存
     map<string, PackageSendCache> m_sendCache;
+    //接受封包缓存
     map<string, PackageRecvCache> m_recvCache;
+    int m_iRecvPacketCount;
 };
 #endif

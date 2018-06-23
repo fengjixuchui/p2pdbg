@@ -10,6 +10,7 @@ Ups::Ups()
     m_udpSocket = INVALID_SOCKET;
     m_hRecvThread = NULL;
     m_hStatThread = NULL;
+    m_iRecvPacketCount = 0;
 }
 
 Ups::~Ups()
@@ -60,6 +61,8 @@ bool Ups::OnRecvComplete(PackageRecvCache &recvCache)
         {
             recvCache.m_iFirstSerial += ij->m_interval.m_iPackageSize;
             recvCache.m_CompleteSet.push_back(ij->m_strContent);
+            m_iRecvPacketCount++;
+            SetEvent(m_hRecvEvent);
         }
         else
         {
@@ -74,15 +77,21 @@ bool Ups::OnRecvComplete(PackageRecvCache &recvCache)
     return true;
 }
 
-bool Ups::OnRecvUpsData(const string &strUnique, UpsHeader *pHeader, const string &strData)
+bool Ups::OnRecvUpsData(const char *addr, unsigned short uPort, const string &strUnique, UpsHeader *pHeader, const string &strData)
 {
     CScopedLocker lock(this);
     map<string, PackageRecvCache>::iterator it;
     if (m_recvCache.end() == (it = m_recvCache.find(strUnique)))
     {
         PackageRecvCache cache;
+        cache.m_strUnique = strUnique;
+        cache.m_strIp = addr;
+        cache.m_uPort = uPort;
         cache.m_iFirstSerial = pHeader->m_uSerial + pHeader->m_uSize;
         cache.m_CompleteSet.push_back(strData);
+        m_recvCache[strUnique] = cache;
+        m_iRecvPacketCount++;
+        SetEvent(m_hRecvEvent);
     }
     else
     {
@@ -102,6 +111,8 @@ bool Ups::OnRecvUpsData(const string &strUnique, UpsHeader *pHeader, const strin
         {
             it->second.m_iFirstSerial++;
             it->second.m_CompleteSet.push_back(strData);
+            m_iRecvPacketCount++;
+            SetEvent(m_hRecvEvent);
             OnRecvComplete(it->second);
         }
         /**
@@ -177,6 +188,8 @@ bool Ups::OnRecvPostData(const string &strUnique, const string &strData)
 {
     CScopedLocker lock(this);
     m_recvCache[strUnique].m_CompleteSet.push_back(strData);
+    m_iRecvPacketCount++;
+    SetEvent(m_hRecvEvent);
     return true;
 }
 
@@ -206,7 +219,7 @@ bool Ups::OnRecvUdpData(const char *addr, unsigned short uPort, const char *pDat
             {
                 strUnique = GetConnectUnique(addr, uPort, MARK_RECV);
                 SendAck(addr, uPort, &header);
-                OnRecvUpsData(strUnique, &header, string(pData + sizeof(UpsHeader), iDataLength));
+                OnRecvUpsData(addr, uPort, strUnique, &header, string(pData + sizeof(UpsHeader), iDataLength));
             }
             break;
         case OPT_POST_DATA:
@@ -427,6 +440,7 @@ bool Ups::UpsInit(unsigned short uLocalPort, bool bKeepAlive)
 
     m_hStatEvent = CreateEventW(NULL, FALSE, FALSE, NULL);
     m_hStopEvent = CreateEventW(NULL, TRUE, FALSE, NULL);
+    m_hRecvEvent = CreateEventW(NULL, TRUE, FALSE, NULL);
     m_hRecvThread = CreateThread(NULL, 0, RecvThread, this, 0, NULL);
     m_hStatThread = CreateThread(NULL, 0, StatThread, this, 0, NULL);
     return true;
@@ -445,11 +459,16 @@ bool Ups::UpsClose()
     SetEvent(m_hStopEvent);
     CloseHandle(m_hStopEvent);
     CloseHandle(m_hStatEvent);
+    CloseHandle(m_hRecvEvent);
     m_hStopEvent = NULL;
     m_hStatEvent = NULL;
+    m_hRecvEvent = NULL;
 
     CloseHandle(m_hStatThread);
     CloseHandle(m_hRecvThread);
+    m_hStatThread = NULL;
+    m_hRecvThread = NULL;
+    m_iRecvPacketCount = 0;
     return true;
 }
 
@@ -506,14 +525,23 @@ bool Ups::UpsSend(const char *addr, unsigned short uPort, const char *pData, int
 
 int Ups::UpsRecv(string &strIp, USHORT &uPort, string &strData)
 {
+    WaitForSingleObject(m_hRecvEvent, INFINITE);
     CScopedLocker lock(this);
     for (map<string, PackageRecvCache>::iterator it = m_recvCache.begin() ; it != m_recvCache.end() ; it++)
     {
         if (!it->second.m_CompleteSet.empty())
         {
+            strIp = it->second.m_strIp;
+            uPort = it->second.m_uPort;
             strData = *(it->second.m_CompleteSet.begin());
             int iSize = strData.size();
             it->second.m_CompleteSet.erase(it->second.m_CompleteSet.begin());
+            m_iRecvPacketCount--;
+
+            if (m_iRecvPacketCount == 0)
+            {
+                ResetEvent(m_hRecvEvent);
+            }
             return iSize;
         }
     }
