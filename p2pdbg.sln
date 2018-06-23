@@ -3,6 +3,8 @@ Microsoft Visual Studio Solution File, Format Version 10.00
 # Visual Studio 2008
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "p2pdbg", "p2pdbg\p2pdbg.vcproj", "{C3E46A03-8334-405F-9F93-93E9E0D68767}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "p2pserv", "p2pserv\p2pserv.vcproj", "{4584F8D9-3663-4948-BD49-BBDD8B5F58DA}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -13,6 +15,10 @@ Global
 		{C3E46A03-8334-405F-9F93-93E9E0D68767}.Debug|Win32.Build.0 = Debug|Win32
 		{C3E46A03-8334-405F-9F93-93E9E0D68767}.Release|Win32.ActiveCfg = Release|Win32
 		{C3E46A03-8334-405F-9F93-93E9E0D68767}.Release|Win32.Build.0 = Release|Win32
+		{4584F8D9-3663-4948-BD49-BBDD8B5F58DA}.Debug|Win32.ActiveCfg = Debug|Win32
+		{4584F8D9-3663-4948-BD49-BBDD8B5F58DA}.Debug|Win32.Build.0 = Debug|Win32
+		{4584F8D9-3663-4948-BD49-BBDD8B5F58DA}.Release|Win32.ActiveCfg = Release|Win32
+		{4584F8D9-3663-4948-BD49-BBDD8B5F58DA}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

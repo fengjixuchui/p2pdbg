@@ -2,9 +2,9 @@
 <VisualStudioProject
 	ProjectType="Visual C++"
 	Version="9.00"
-	Name="p2pdbg"
-	ProjectGUID="{C3E46A03-8334-405F-9F93-93E9E0D68767}"
-	RootNamespace="p2pdbg"
+	Name="p2pserv"
+	ProjectGUID="{4584F8D9-3663-4948-BD49-BBDD8B5F58DA}"
+	RootNamespace="p2pserv"
 	Keyword="Win32Proj"
 	TargetFrameworkVersion="196613"
 	>
@@ -115,7 +115,6 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				EnableIntrinsicFunctions="true"
-				AdditionalIncludeDirectories="./lib"
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS"
 				RuntimeLibrary="2"
 				EnableFunctionLevelLinking="true"
@@ -173,22 +172,6 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
-				RelativePath=".\clientview.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\clientview.h"
-				>
-			</File>
-			<File
-				RelativePath=".\dbgview.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\dbgview.h"
-				>
-			</File>
-			<File
 				RelativePath=".\logic.cpp"
 				>
 			</File>
@@ -233,21 +216,13 @@
 				>
 			</File>
 			<File
-				RelativePath=".\p2pdbg.rc"
+				RelativePath=".\p2pserv.rc"
 				>
 			</File>
 		</Filter>
 		<Filter
 			Name="lib"
 			>
-			<File
-				RelativePath="..\lib\common.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\lib\common.h"
-				>
-			</File>
 			<File
 				RelativePath="..\lib\gdcharconv.cpp"
 				>
@@ -261,27 +236,11 @@
 				>
 			</File>
 			<File
-				RelativePath="..\lib\mstring.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\lib\mstring.h"
-				>
-			</File>
-			<File
 				RelativePath="..\lib\ups.cpp"
 				>
 			</File>
 			<File
 				RelativePath="..\lib\ups.h"
-				>
-			</File>
-			<File
-				RelativePath="..\lib\winsize.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\lib\winsize.h"
 				>
 			</File>
 			<Filter
