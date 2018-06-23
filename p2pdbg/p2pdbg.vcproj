@@ -207,10 +207,6 @@
 				RelativePath=".\udpserv.h"
 				>
 			</File>
-			<File
-				RelativePath=".\ups.cpp"
-				>
-			</File>
 		</Filter>
 		<Filter
 			Name="Í·ÎÄ¼þ"
@@ -223,10 +219,6 @@
 			</File>
 			<File
 				RelativePath=".\resource.h"
-				>
-			</File>
-			<File
-				RelativePath=".\ups.h"
 				>
 			</File>
 		</Filter>
@@ -264,11 +256,23 @@
 				>
 			</File>
 			<File
+				RelativePath=".\lib\LockBase.h"
+				>
+			</File>
+			<File
 				RelativePath=".\lib\mstring.cpp"
 				>
 			</File>
 			<File
 				RelativePath=".\lib\mstring.h"
+				>
+			</File>
+			<File
+				RelativePath=".\ups.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\ups.h"
 				>
 			</File>
 			<File

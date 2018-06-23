@@ -1,6 +1,11 @@
 /**
 基于udp的可靠传输实现 lougd
 2018/06/21
+该接口主要实现以下功能：
+
+1.模拟类似tcp send-ack方式保证数据完整性
+2.保证封包时序
+3.打包自动分包，保证大包传传输效率
 */
 #ifndef UPS_SAFE_H_H_
 #define UPS_SAFE_H_H_
@@ -10,6 +15,7 @@
 #include <list>
 #include <map>
 #include <string>
+#include "LockBase.h"
 
 using namespace std;
 
@@ -33,6 +39,7 @@ using namespace std;
 通过类似tcp发送，ack应答的方式保证数据的可靠发送
 发送方会在每个时间片内检测是否有回执，如果没有进行数据的重传
 为尽可能设计简单，m_uSerial字段仅对OPT_SEND_DATA指令有效
+UpsHeader中各个字段通过网络序编码
 */
 struct UpsHeader
 {
@@ -87,23 +94,27 @@ struct PackageInterval
     int m_iPackageSize;
 };
 
+struct PacketRecvDesc
+{
+    PackageInterval m_interval;             //接收封包序列号
+    string m_strContent;                    //接收封包的具体内容
+    DWORD m_dwRecvTickCount;                //封包接收的时间
+};
+
 struct PackageRecvCache
 {
     string m_strUnique;                     //连接标识
     int m_iFirstSerial;                     //第一个序号
-    vector<PackageInterval> m_intervalSet;  //区间集合
-    vector<string> m_packageSet;            //封包内容缓存集合
-    string m_strCompleteBuffer;             //已完成的封包集合
-    DWORD m_dwLastUpdateCount;              //上次更新时间
+    vector<PacketRecvDesc> m_recvDescSet;   //缓冲区中的封包集合
+    vector<string> m_CompleteSet;           //已完成的封包集合
 
     PackageRecvCache()
     {
         m_iFirstSerial = 0;
-        m_dwLastUpdateCount = 0;
     }
 };
 
-class Ups
+class Ups : public CCriticalSectionLockable
 {
 public:
     Ups();
@@ -117,7 +128,7 @@ public:
 
 protected:
     bool SendAck(const char *ip, USHORT uPort, UpsHeader *pHeader);
-    bool InsertRecvInterval(PackageInterval interval, vector<PackageInterval> &intervalSet);
+    bool InsertRecvInterval(PacketRecvDesc desc, vector<PacketRecvDesc> &descSet);
     bool PushCache(const string &strUnique, const char *ip, USHORT uPort, PacketSendDesc *desc);
     bool SendToInternal(const string &strIp, USHORT uPort, const string &strData);
     vector<PacketSendDesc *> GetLogicSetFromRawData(const string &strData, int iOpt);
@@ -130,6 +141,8 @@ protected:
     bool OnRecvUpsData(const string &strUnique, UpsHeader *pHeader, const string &strData);
     bool OnRecvUpsAck(const string &strUnique, UpsHeader *pHeader);
     bool OnRecvPostData(const string &strUnique, const string &strData);
+    UpsHeader *EncodeHeader(UpsHeader *pHeader);
+    UpsHeader *DecodeHeader(UpsHeader *pHeader);
     static DWORD WINAPI RecvThread(LPVOID pParam);
     static DWORD WINAPI StatThread(LPVOID pParam);
 
