@@ -107,10 +107,12 @@ struct PackageRecvCache
     int m_iFirstSerial;                     //第一个序号
     vector<PacketRecvDesc> m_recvDescSet;   //缓冲区中的封包集合
     vector<string> m_CompleteSet;           //已完成的封包集合
+    int m_iSerialGrow;                      //序号增幅，封包序号是1-65536循环使用的，这个参数处理出现循环的情况
 
     PackageRecvCache()
     {
-        m_iFirstSerial = 0;
+        m_iSerialGrow = 0;
+        m_iFirstSerial = -1;
     }
 };
 
@@ -141,8 +143,10 @@ protected:
     bool OnRecvUpsData(const string &strUnique, UpsHeader *pHeader, const string &strData);
     bool OnRecvUpsAck(const string &strUnique, UpsHeader *pHeader);
     bool OnRecvPostData(const string &strUnique, const string &strData);
+    UpsHeader *PacketHeader(unsigned short uOpt, unsigned short uSerial, unsigned short uLength, UpsHeader *ptr);
     UpsHeader *EncodeHeader(UpsHeader *pHeader);
     UpsHeader *DecodeHeader(UpsHeader *pHeader);
+    unsigned short GetSendSerial();
     static DWORD WINAPI RecvThread(LPVOID pParam);
     static DWORD WINAPI StatThread(LPVOID pParam);
 

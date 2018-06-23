@@ -2,8 +2,8 @@
 #include <Windows.h>
 #include <Shlwapi.h>
 #include <CommCtrl.h>
-#include <mstring.h>
 #include <gdcharconv.h>
+#include <mstring.h>
 #include "clientview.h"
 #include "common.h"
 #include "resource.h"
