@@ -462,19 +462,20 @@ bool Ups::UpsInit(unsigned short uLocalPort, bool bKeepAlive)
     m_udpSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     m_uLocalPort = uLocalPort;
 
-    SOCKADDR_IN localAddr = {0};
-    localAddr.sin_addr.S_un.S_addr = htonl(INADDR_ANY);
-    localAddr.sin_family = AF_INET;
-    localAddr.sin_port = htons(uLocalPort);
-
-    if (-1 == bind(m_udpSocket, (sockaddr *)&localAddr, sizeof(localAddr)))
+    if (uLocalPort > 0)
     {
-        int e = WSAGetLastError();
-        closesocket(m_udpSocket);
-        m_udpSocket = INVALID_SOCKET;
-        return false;
+        SOCKADDR_IN localAddr = {0};
+        localAddr.sin_addr.S_un.S_addr = htonl(INADDR_ANY);
+        localAddr.sin_family = AF_INET;
+        localAddr.sin_port = htons(uLocalPort);
+        if (-1 == bind(m_udpSocket, (sockaddr *)&localAddr, sizeof(localAddr)))
+        {
+            int e = WSAGetLastError();
+            closesocket(m_udpSocket);
+            m_udpSocket = INVALID_SOCKET;
+            return false;
+        }
     }
-
     m_uMagicNum = GetMagicNumber();
     m_hStatEvent = CreateEventW(NULL, FALSE, FALSE, NULL);
     m_hStopEvent = CreateEventW(NULL, TRUE, FALSE, NULL);
