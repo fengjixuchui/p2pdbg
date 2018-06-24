@@ -22,9 +22,11 @@ using namespace std;
 #define MAGIC_NUMBER            0xf1f3              //封包识别数
 #define TIMESLICE_STAT          1000                //状态检查时间片
 #define PACKET_LIMIT            512                 //单个逻辑包大小限制(根据因特网MTU)
-#define MAX_TESTCOUNT           3                   //最多尝试重传次数
-#define MAX_RECVTIME            3000                //接收方丢包最多等待时间
+#define MAX_TESTCOUNT           10                  //最多尝试重传次数
+#define MAX_RECVTIME            10 * 1000           //接收方丢包最多等待时间
 #define MAGIC_SEED              0xeb                //魔数种子
+#define PORT_LOCAL_BASE         35001               //本地端口基数
+#define BIND_TEST_COUNT         50                  //随机端口尝试次数
 
 //操作指令
 #define OPT_SEND_DATA           0x0001              //安全数据传送指令
@@ -132,7 +134,9 @@ public:
     int UpsRecv(string &strIp, USHORT &uPort, string &strData);
 
 protected:
+    bool TestBindLocalPort(SOCKET sock, unsigned short uLocalPort);
     bool CheckDataMagic(UpsHeader *header, PackageRecvCache &cache);
+    bool PushCompletePacket(PackageRecvCache &cache, const string &strData);
     unsigned short GetMagicNumber();
     bool IsValidMagic(unsigned short uMagic);
     bool SendAck(const char *ip, USHORT uPort, UpsHeader *pHeader);
@@ -148,7 +152,7 @@ protected:
     bool OnRecvComplete(PackageRecvCache &recvCache);
     bool OnRecvUpsData(const char *addr, unsigned short uPort, const string &strUnique, UpsHeader *pHeader, const string &strData);
     bool OnRecvUpsAck(const string &strUnique, UpsHeader *pHeader);
-    bool OnRecvPostData(const string &strUnique, const string &strData);
+    bool OnRecvPostData(const char *addr, unsigned short uPort, UpsHeader *pHeader, const string &strUnique, const string &strData);
     UpsHeader *PacketHeader(unsigned short uOpt, unsigned short uSerial, unsigned short uLength, UpsHeader *ptr);
     UpsHeader *EncodeHeader(UpsHeader *pHeader);
     UpsHeader *DecodeHeader(UpsHeader *pHeader);

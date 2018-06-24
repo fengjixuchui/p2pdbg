@@ -30,6 +30,7 @@ bool Ups::InsertRecvInterval(PacketRecvDesc desc, vector<PacketRecvDesc> &descSe
         if (desc.m_interval.m_iStartSerial < it->m_interval.m_iStartSerial)
         {
             descSet.insert(it, desc);
+            return true;
         }
         //封包发送重复
         else if (desc.m_interval.m_iStartSerial == it->m_interval.m_iStartSerial)
@@ -76,10 +77,8 @@ bool Ups::OnRecvComplete(PackageRecvCache &recvCache)
     {
         if (ij->m_interval.m_iStartSerial == recvCache.m_iFirstSerial)
         {
-            recvCache.m_iFirstSerial += ij->m_interval.m_iPackageSize;
-            recvCache.m_CompleteSet.push_back(ij->m_strContent);
-            m_iRecvPacketCount++;
-            SetEvent(m_hRecvEvent);
+            recvCache.m_iFirstSerial++;
+            PushCompletePacket(recvCache, ij->m_strContent);
         }
         else
         {
@@ -101,13 +100,23 @@ bool Ups::CheckDataMagic(UpsHeader *header, PackageRecvCache &cache)
     {
         for (vector<PacketRecvDesc>::iterator it = cache.m_recvDescSet.begin() ; it != cache.m_recvDescSet.end() ; it++)
         {
-            cache.m_CompleteSet.push_back(it->m_strContent);
-            SetEvent(m_hRecvEvent);
+            PushCompletePacket(cache, it->m_strContent);
         }
         cache.m_recvDescSet.clear();
         cache.m_iFirstSerial = header->m_uSerial;
         cache.m_iMagicNum = header->m_uMagic;
     }
+    return true;
+}
+
+bool Ups::PushCompletePacket(PackageRecvCache &cache, const string &strData)
+{
+    cache.m_CompleteSet.push_back(strData);
+    m_iRecvPacketCount++;
+
+    string dbg = fmt("m_iRecvPacketCount:%d\n", m_iRecvPacketCount);
+    //OutputDebugStringA(dbg.c_str());
+    SetEvent(m_hRecvEvent);
     return true;
 }
 
@@ -121,11 +130,11 @@ bool Ups::OnRecvUpsData(const char *addr, unsigned short uPort, const string &st
         cache.m_strUnique = strUnique;
         cache.m_strIp = addr;
         cache.m_uPort = uPort;
-        cache.m_iFirstSerial = pHeader->m_uSerial + pHeader->m_uSize;
-        cache.m_CompleteSet.push_back(strData);
+        cache.m_iFirstSerial = pHeader->m_uSerial;
+        cache.m_CompleteSet;
+        cache.m_iMagicNum = pHeader->m_uMagic;
         m_recvCache[strUnique] = cache;
-        m_iRecvPacketCount++;
-        SetEvent(m_hRecvEvent);
+        PushCompletePacket(m_recvCache[strUnique], strData);
     }
     else
     {
@@ -136,7 +145,7 @@ bool Ups::OnRecvUpsData(const char *addr, unsigned short uPort, const string &st
         }
 
         //数据接收序号出现环的情况
-        if ((it->second.m_iFirstSerial > (0xffff - PACKET_LIMIT)) && (pHeader->m_uSerial > 0 && pHeader->m_uSerial < PACKET_LIMIT))
+        if (it->second.m_iFirstSerial == 0xfffe)
         {
             it->second.m_iSerialGrow += 0xffff;
         }
@@ -145,9 +154,7 @@ bool Ups::OnRecvUpsData(const char *addr, unsigned short uPort, const string &st
         if (iCurSerial == it->second.m_iFirstSerial)
         {
             it->second.m_iFirstSerial++;
-            it->second.m_CompleteSet.push_back(strData);
-            m_iRecvPacketCount++;
-            SetEvent(m_hRecvEvent);
+            PushCompletePacket(it->second, strData);
             OnRecvComplete(it->second);
         }
         /**
@@ -185,6 +192,9 @@ bool Ups::OnRecvUpsAck(const string &strUnique, UpsHeader *pHeader)
         return false;
     }
 
+    string strDbg = fmt("ack:%d\n", pHeader->m_uSerial);
+    OutputDebugStringA(strDbg.c_str());
+
     for (vector<PacketSendDesc *>::iterator ij = it->second.m_sendSet.begin() ; ij != it->second.m_sendSet.end() ;)
     {
         PacketSendDesc *pDesc = (*ij);
@@ -220,12 +230,22 @@ UpsHeader *Ups::DecodeHeader(UpsHeader *pHeader)
     return pHeader;
 }
 
-bool Ups::OnRecvPostData(const string &strUnique, const string &strData)
+bool Ups::OnRecvPostData(const char *addr, unsigned short uPort, UpsHeader *pHeader, const string &strUnique, const string &strData)
 {
     CScopedLocker lock(this);
-    m_recvCache[strUnique].m_CompleteSet.push_back(strData);
-    m_iRecvPacketCount++;
-    SetEvent(m_hRecvEvent);
+    map<string, PackageRecvCache>::iterator it;
+    if (m_recvCache.end() == (it = m_recvCache.find(strUnique)))
+    {
+        PackageRecvCache cache;
+        cache.m_strIp = addr;
+        cache.m_uPort = uPort;
+        cache.m_iMagicNum = pHeader->m_uMagic;
+        cache.m_strUnique = strUnique;
+        m_recvCache[strUnique] = cache;
+        it = m_recvCache.find(strUnique);
+    }
+
+    PushCompletePacket(it->second, strData);
     return true;
 }
 
@@ -262,7 +282,7 @@ bool Ups::OnRecvUdpData(const char *addr, unsigned short uPort, const char *pDat
         case OPT_POST_DATA:
             {
                 strUnique = GetConnectUnique(addr, uPort, MARK_RECV);
-                OnRecvPostData(strUnique, string(pData + sizeof(UpsHeader), iDataLength));
+                OnRecvPostData(addr, uPort, &header, strUnique, string(pData + sizeof(UpsHeader), iDataLength));
             }
             break;
         case OPT_REQUEST_ACK:
@@ -291,6 +311,10 @@ DWORD Ups::RecvThread(LPVOID pParam)
     {
         iAddrSize = sizeof(clientAddr);
         int iRecvSize = recvfrom(ptr->m_udpSocket, buffer, iBufferSize, 0, (sockaddr *)&clientAddr, &iAddrSize);
+
+        static int s_dbg = 0;
+        string str = fmt("count2222:%d, size:%d, err:%d\n", s_dbg++, iRecvSize, WSAGetLastError());
+        OutputDebugStringA(str.c_str());
 
         if (iRecvSize <= 0)
         {
@@ -451,6 +475,19 @@ DWORD Ups::StatThread(LPVOID pParam)
     return 0;
 }
 
+bool Ups::TestBindLocalPort(SOCKET sock, unsigned short uLocalPort)
+{
+    SOCKADDR_IN localAddr = {0};
+    localAddr.sin_addr.S_un.S_addr = htonl(INADDR_ANY);
+    localAddr.sin_family = AF_INET;
+    localAddr.sin_port = htons(uLocalPort);
+    if (-1 == bind(m_udpSocket, (sockaddr *)&localAddr, sizeof(localAddr)))
+    {
+        return false;
+    }
+    return true;
+}
+
 bool Ups::UpsInit(unsigned short uLocalPort, bool bKeepAlive)
 {
     if (m_bInit)
@@ -458,24 +495,46 @@ bool Ups::UpsInit(unsigned short uLocalPort, bool bKeepAlive)
         return false;
     }
 
-    m_bInit = true;
     m_udpSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     m_uLocalPort = uLocalPort;
 
     if (uLocalPort > 0)
     {
-        SOCKADDR_IN localAddr = {0};
-        localAddr.sin_addr.S_un.S_addr = htonl(INADDR_ANY);
-        localAddr.sin_family = AF_INET;
-        localAddr.sin_port = htons(uLocalPort);
-        if (-1 == bind(m_udpSocket, (sockaddr *)&localAddr, sizeof(localAddr)))
+        if (!TestBindLocalPort(m_udpSocket, uLocalPort))
         {
-            int e = WSAGetLastError();
             closesocket(m_udpSocket);
             m_udpSocket = INVALID_SOCKET;
             return false;
         }
     }
+    else
+    {
+        /**
+        udp特性决定随机端口也需要在接收数据前先绑定一个端口或则先发送一条数据
+        否则在该socket上调用recvfrom会失败
+        */
+        int i = 0;
+        for (i = 0 ; i < BIND_TEST_COUNT ; i++)
+        {
+            if (TestBindLocalPort(m_udpSocket, PORT_LOCAL_BASE + i))
+            {
+                m_uLocalPort = PORT_LOCAL_BASE + i;
+                break;
+            }
+        }
+
+        if (BIND_TEST_COUNT == i)
+        {
+            closesocket(m_udpSocket);
+            m_udpSocket = INVALID_SOCKET;
+            return false;
+        }
+    }
+
+    m_bInit = true;
+    //int nRecvBuf = 50 * 1024 * 1024;       //设置成5M
+    //int res = setsockopt(m_udpSocket, SOL_SOCKET, SO_RCVBUF, (const char *)&nRecvBuf,sizeof(nRecvBuf));
+
     m_uMagicNum = GetMagicNumber();
     m_hStatEvent = CreateEventW(NULL, FALSE, FALSE, NULL);
     m_hStopEvent = CreateEventW(NULL, TRUE, FALSE, NULL);
@@ -576,6 +635,9 @@ int Ups::UpsRecv(string &strIp, USHORT &uPort, string &strData)
             int iSize = strData.size();
             it->second.m_CompleteSet.erase(it->second.m_CompleteSet.begin());
             m_iRecvPacketCount--;
+
+            string dbg = fmt("m_iRecvPacketCount sub:%d cache:%d\n", m_iRecvPacketCount, it->second.m_CompleteSet.size());
+            OutputDebugStringA(dbg.c_str());
 
             if (m_iRecvPacketCount == 0)
             {
