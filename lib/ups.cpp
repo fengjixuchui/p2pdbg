@@ -11,6 +11,7 @@ Ups::Ups()
     m_hRecvThread = NULL;
     m_hStatThread = NULL;
     m_iRecvPacketCount = 0;
+    m_uMagicNum = 0;
 }
 
 Ups::~Ups()
@@ -42,6 +43,22 @@ bool Ups::InsertRecvInterval(PacketRecvDesc desc, vector<PacketRecvDesc> &descSe
         descSet.push_back(desc);
     }
     return true;
+}
+
+unsigned short Ups::GetMagicNumber()
+{
+    DWORD dw = GetTickCount();
+    unsigned short hight = (dw & 0xff);
+    unsigned short low = (hight ^ MAGIC_SEED);
+    unsigned short uMagic = ((hight << 4) | low);
+    return uMagic;
+}
+
+bool Ups::IsValidMagic(unsigned short uMagic)
+{
+    unsigned short hight = (uMagic >> 4);
+    unsigned short low = (uMagic & 0xff);
+    return (low == (hight ^ MAGIC_SEED));
 }
 
 bool Ups::SendAck(const char *ip, USHORT uPort, UpsHeader *pHeader)
@@ -77,6 +94,23 @@ bool Ups::OnRecvComplete(PackageRecvCache &recvCache)
     return true;
 }
 
+bool Ups::CheckDataMagic(UpsHeader *header, PackageRecvCache &cache)
+{
+    CScopedLocker lock(this);
+    if (header->m_uMagic != cache.m_iMagicNum)
+    {
+        for (vector<PacketRecvDesc>::iterator it = cache.m_recvDescSet.begin() ; it != cache.m_recvDescSet.end() ; it++)
+        {
+            cache.m_CompleteSet.push_back(it->m_strContent);
+            SetEvent(m_hRecvEvent);
+        }
+        cache.m_recvDescSet.clear();
+        cache.m_iFirstSerial = header->m_uSerial;
+        cache.m_iMagicNum = header->m_uMagic;
+    }
+    return true;
+}
+
 bool Ups::OnRecvUpsData(const char *addr, unsigned short uPort, const string &strUnique, UpsHeader *pHeader, const string &strData)
 {
     CScopedLocker lock(this);
@@ -95,6 +129,7 @@ bool Ups::OnRecvUpsData(const char *addr, unsigned short uPort, const string &st
     }
     else
     {
+        CheckDataMagic(pHeader, it->second);
         if (-1 == it->second.m_iFirstSerial)
         {
             it->second.m_iFirstSerial = pHeader->m_uSerial;
@@ -119,12 +154,13 @@ bool Ups::OnRecvUpsData(const char *addr, unsigned short uPort, const string &st
         极偶然情况会走此处逻辑，比如首次接收的是第二个包
         比如前一个包超时清除，然后又收到
         */
+        /**
         else if (iCurSerial < it->second.m_iFirstSerial)
         {
             it->second.m_iFirstSerial = iCurSerial;
             OnRecvComplete(it->second);
-        }
-        else
+        }*/
+        else if(iCurSerial > it->second.m_iFirstSerial)
         {
             PacketRecvDesc desc;
             desc.m_dwRecvTickCount = GetTickCount();
@@ -195,6 +231,7 @@ bool Ups::OnRecvPostData(const string &strUnique, const string &strData)
 
 UpsHeader *Ups::PacketHeader(unsigned short uOpt, unsigned short uSerial, unsigned short uLength, UpsHeader *ptr)
 {
+    ptr->m_uMagic = m_uMagicNum;
     ptr->m_uOpt = uOpt;
     ptr->m_uSerial = uSerial;
     ptr->m_uSize = uLength;
@@ -207,7 +244,7 @@ bool Ups::OnRecvUdpData(const char *addr, unsigned short uPort, const char *pDat
     memcpy(&header, pData, sizeof(header));
     DecodeHeader(&header);
 
-    if (header.m_uMagic != MAGIC_NUMBER)
+    if (IsValidMagic(header.m_uMagic))
     {
         return false;
     }
@@ -438,6 +475,7 @@ bool Ups::UpsInit(unsigned short uLocalPort, bool bKeepAlive)
         return false;
     }
 
+    m_uMagicNum = GetMagicNumber();
     m_hStatEvent = CreateEventW(NULL, FALSE, FALSE, NULL);
     m_hStopEvent = CreateEventW(NULL, TRUE, FALSE, NULL);
     m_hRecvEvent = CreateEventW(NULL, TRUE, FALSE, NULL);

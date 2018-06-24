@@ -24,6 +24,7 @@ using namespace std;
 #define PACKET_LIMIT            512                 //单个逻辑包大小限制(根据因特网MTU)
 #define MAX_TESTCOUNT           3                   //最多尝试重传次数
 #define MAX_RECVTIME            3000                //接收方丢包最多等待时间
+#define MAGIC_SEED              0xeb                //魔数种子
 
 //操作指令
 #define OPT_SEND_DATA           0x0001              //安全数据传送指令
@@ -43,14 +44,13 @@ UpsHeader中各个字段通过网络序编码
 */
 struct UpsHeader
 {
-    unsigned short m_uMagic;        //ups头校验位
+    unsigned short m_uMagic;        //ups头魔法数
     unsigned short m_uOpt;          //操作指令
 
     unsigned short m_uSerial;       //封包序号 OPT_SEND:本次发送的封包序号 OPT_ACK:收到封包的序号
     unsigned short m_uSize;         //逻辑包大小 OPT_SEND:本次发送的封包大小 OPT_ACK:收到封包的序号
 
     UpsHeader() {
-        m_uMagic = MAGIC_NUMBER;
     }
 };
 
@@ -110,6 +110,7 @@ struct PackageRecvCache
     vector<PacketRecvDesc> m_recvDescSet;   //缓冲区中的封包集合
     vector<string> m_CompleteSet;           //已完成的封包集合
     int m_iSerialGrow;                      //序号增幅，封包序号是1-65536循环使用的，这个参数处理出现循环的情况
+    int m_iMagicNum;                        //ups魔法数，用于识别ups封包有效性和是否是同一个session
 
     PackageRecvCache()
     {
@@ -131,6 +132,9 @@ public:
     int UpsRecv(string &strIp, USHORT &uPort, string &strData);
 
 protected:
+    bool CheckDataMagic(UpsHeader *header, PackageRecvCache &cache);
+    unsigned short GetMagicNumber();
+    bool IsValidMagic(unsigned short uMagic);
     bool SendAck(const char *ip, USHORT uPort, UpsHeader *pHeader);
     bool InsertRecvInterval(PacketRecvDesc desc, vector<PacketRecvDesc> &descSet);
     bool PushCache(const string &strUnique, const char *ip, USHORT uPort, PacketSendDesc *desc);
@@ -157,6 +161,7 @@ protected:
     int m_uLocalPort;
     string m_strLocalIp;
     int m_iSendSerial;
+    unsigned short m_uMagicNum;
     SOCKET m_udpSocket;
     HANDLE m_hRecvThread;
     HANDLE m_hStatThread;
