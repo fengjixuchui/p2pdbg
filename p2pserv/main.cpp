@@ -1,6 +1,7 @@
 #include <WinSock2.h>
 #include <Windows.h>
 #include <Shlwapi.h>
+#include <gdcharconv.h>
 #include "udpserv.h"
 #include "logic.h"
 #include "ups.h"
@@ -48,6 +49,24 @@ static INT_PTR CALLBACK _DialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
 
 #define TEST_PORT_LOCAL     9971
 
+static Ups *gs_pUpsServ = new Ups();
+
+static DWORD WINAPI _DbgThread(LPVOID pParam)
+{
+    int iCount = 0;
+    while (true) {
+        string strIp;
+        USHORT uPort;
+        string strData;
+        int iSize = gs_pUpsServ->UpsRecv(strIp, uPort, strData);
+
+        string strDbg = fmt("recv data:%hs\n", strData.c_str());
+        OutputDebugStringA(strDbg.c_str());
+        iCount++;
+    }
+    return 0;
+}
+
 int WINAPI WinMain(HINSTANCE hT, HINSTANCE hP, LPSTR szCmdLine, int iShow)
 {
     WSADATA wsaData;
@@ -56,9 +75,9 @@ int WINAPI WinMain(HINSTANCE hT, HINSTANCE hP, LPSTR szCmdLine, int iShow)
     /**
     CWorkLogic::GetInstance()->StartWork(PORT_SERV);
     */
+    gs_pUpsServ->UpsInit(TEST_PORT_LOCAL, false);
+    CreateThread(NULL, 0, _DbgThread, NULL, 0, NULL);
 
-    Ups *serv = new Ups();
-    serv->UpsInit(TEST_PORT_LOCAL, false);
     char szInfo[128] = {0};
     wnsprintfA(szInfo, 128, "%d", TEST_PORT_LOCAL);
     MessageBoxA(0, "udp serv start...", szInfo, 0);
