@@ -22,8 +22,8 @@ using namespace std;
 #define MAGIC_NUMBER            0xf1f3              //封包识别数
 #define TIMESLICE_STAT          1000                //状态检查时间片
 #define PACKET_LIMIT            512                 //单个逻辑包大小限制(根据因特网MTU)
-#define MAX_TESTCOUNT           10                  //最多尝试重传次数
-#define MAX_RECVTIME            10 * 1000           //接收方丢包最多等待时间
+#define MAX_TESTCOUNT           50                  //最多尝试重传次数
+#define MAX_RECVTIME            60 * 1000           //接收方丢包最多等待时间
 #define MAGIC_SEED              0xeb                //魔数种子
 #define PORT_LOCAL_BASE         35001               //本地端口基数
 #define BIND_TEST_COUNT         50                  //随机端口尝试次数
@@ -58,12 +58,10 @@ struct UpsHeader
 
 struct PacketSendStat
 {
-    DWORD m_dwLastSendCount;
     DWORD m_dwTestCount;
 
     PacketSendStat()
     {
-        m_dwLastSendCount = 0;
         m_dwTestCount = 0;
     }
 };
@@ -110,7 +108,6 @@ struct PackageRecvCache
     unsigned short m_uPort;                 //连接端口
     int m_iFirstSerial;                     //第一个序号
     vector<PacketRecvDesc> m_recvDescSet;   //缓冲区中的封包集合
-    vector<string> m_CompleteSet;           //已完成的封包集合
     int m_iSerialGrow;                      //序号增幅，封包序号是1-65536循环使用的，这个参数处理出现循环的情况
     int m_iMagicNum;                        //ups魔法数，用于识别ups封包有效性和是否是同一个session
 
@@ -121,7 +118,14 @@ struct PackageRecvCache
     }
 };
 
-class Ups : public CCriticalSectionLockable
+struct PackageRecvResult
+{
+    string m_strIp;
+    unsigned short m_uPort;
+    string m_strContent;
+};
+
+class Ups
 {
 public:
     Ups();
@@ -158,7 +162,8 @@ protected:
     UpsHeader *DecodeHeader(UpsHeader *pHeader);
     unsigned short GetSendSerial();
     static DWORD WINAPI RecvThread(LPVOID pParam);
-    static DWORD WINAPI StatThread(LPVOID pParam);
+    static DWORD WINAPI SendStatThread(LPVOID pParam);
+    static DWORD WINAPI RecvStatThread(LPVOID pParam);
 
 protected:
     bool m_bInit;
@@ -168,15 +173,20 @@ protected:
     unsigned short m_uMagicNum;
     SOCKET m_udpSocket;
     HANDLE m_hRecvThread;
-    HANDLE m_hStatThread;
+    HANDLE m_hSendStatThread;
+    HANDLE m_hRecvStatThread;
     HANDLE m_hStatEvent;
     HANDLE m_hStopEvent;
     HANDLE m_hRecvEvent;
 
+    CCriticalSectionLockable m_resultLock;
+    CCriticalSectionLockable m_sendLock;
+    CCriticalSectionLockable m_recvLock;
     //发送封包缓存
     map<string, PackageSendCache> m_sendCache;
     //接受封包缓存
     map<string, PackageRecvCache> m_recvCache;
-    int m_iRecvPacketCount;
+    //接收数据结果集
+    list<PackageRecvResult> m_result;
 };
 #endif

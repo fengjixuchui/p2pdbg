@@ -9,8 +9,8 @@ Ups::Ups()
     m_iSendSerial = 0;
     m_udpSocket = INVALID_SOCKET;
     m_hRecvThread = NULL;
-    m_hStatThread = NULL;
-    m_iRecvPacketCount = 0;
+    m_hSendStatThread = NULL;
+    m_hRecvStatThread = NULL;
     m_uMagicNum = 0;
 }
 
@@ -95,7 +95,7 @@ bool Ups::OnRecvComplete(PackageRecvCache &recvCache)
 
 bool Ups::CheckDataMagic(UpsHeader *header, PackageRecvCache &cache)
 {
-    CScopedLocker lock(this);
+    CScopedLocker lock(&m_recvLock);
     if (header->m_uMagic != cache.m_iMagicNum)
     {
         for (vector<PacketRecvDesc>::iterator it = cache.m_recvDescSet.begin() ; it != cache.m_recvDescSet.end() ; it++)
@@ -111,10 +111,14 @@ bool Ups::CheckDataMagic(UpsHeader *header, PackageRecvCache &cache)
 
 bool Ups::PushCompletePacket(PackageRecvCache &cache, const string &strData)
 {
-    cache.m_CompleteSet.push_back(strData);
-    m_iRecvPacketCount++;
+    CScopedLocker lock(&m_resultLock);
+    PackageRecvResult result;
+    result.m_strIp = cache.m_strIp;
+    result.m_uPort = cache.m_uPort;
+    result.m_strContent = strData;
+    m_result.push_back(result);
 
-    string dbg = fmt("m_iRecvPacketCount:%d\n", m_iRecvPacketCount);
+    //string dbg = fmt("m_iRecvPacketCount:%d\n", m_iRecvPacketCount);
     //OutputDebugStringA(dbg.c_str());
     SetEvent(m_hRecvEvent);
     return true;
@@ -122,7 +126,7 @@ bool Ups::PushCompletePacket(PackageRecvCache &cache, const string &strData)
 
 bool Ups::OnRecvUpsData(const char *addr, unsigned short uPort, const string &strUnique, UpsHeader *pHeader, const string &strData)
 {
-    CScopedLocker lock(this);
+    CScopedLocker lock(&m_recvLock);
     map<string, PackageRecvCache>::iterator it;
     if (m_recvCache.end() == (it = m_recvCache.find(strUnique)))
     {
@@ -131,61 +135,55 @@ bool Ups::OnRecvUpsData(const char *addr, unsigned short uPort, const string &st
         cache.m_strIp = addr;
         cache.m_uPort = uPort;
         cache.m_iFirstSerial = pHeader->m_uSerial;
-        cache.m_CompleteSet;
         cache.m_iMagicNum = pHeader->m_uMagic;
         m_recvCache[strUnique] = cache;
-        PushCompletePacket(m_recvCache[strUnique], strData);
+        it = m_recvCache.find(strUnique);
     }
-    else
+
+    //session是否发生变化
+    CheckDataMagic(pHeader, it->second);
+
+    //数据接收序号出现环的情况
+    if (it->second.m_iFirstSerial == 0xfffe)
     {
-        CheckDataMagic(pHeader, it->second);
-        if (-1 == it->second.m_iFirstSerial)
-        {
-            it->second.m_iFirstSerial = pHeader->m_uSerial;
-        }
+        it->second.m_iSerialGrow += 0xffff;
+    }
 
-        //数据接收序号出现环的情况
-        if (it->second.m_iFirstSerial == 0xfffe)
-        {
-            it->second.m_iSerialGrow += 0xffff;
-        }
-
-        int iCurSerial = (pHeader->m_uSerial + it->second.m_iSerialGrow);
-        if (iCurSerial == it->second.m_iFirstSerial)
-        {
-            it->second.m_iFirstSerial++;
-            PushCompletePacket(it->second, strData);
-            OnRecvComplete(it->second);
-        }
-        /**
-        极偶然情况会走此处逻辑，比如首次接收的是第二个包
-        比如前一个包超时清除，然后又收到
-        */
-        /**
-        else if (iCurSerial < it->second.m_iFirstSerial)
-        {
-            it->second.m_iFirstSerial = iCurSerial;
-            OnRecvComplete(it->second);
-        }*/
-        else if(iCurSerial > it->second.m_iFirstSerial)
-        {
-            PacketRecvDesc desc;
-            desc.m_dwRecvTickCount = GetTickCount();
-            PackageInterval interval;
-            interval.m_iStartSerial = iCurSerial;
-            interval.m_iPackageSize = pHeader->m_uSize;
-            desc.m_interval = interval;
-            desc.m_strContent = strData;
-            //将封包区间插入区间集合，等待之前的封包接收
-            InsertRecvInterval(desc, it->second.m_recvDescSet);
-        }
+    int iCurSerial = (pHeader->m_uSerial + it->second.m_iSerialGrow);
+    if (iCurSerial == it->second.m_iFirstSerial)
+    {
+        it->second.m_iFirstSerial++;
+        PushCompletePacket(it->second, strData);
+        OnRecvComplete(it->second);
+    }
+    /**
+    极偶然情况会走此处逻辑，比如首次接收的是第二个包
+    比如前一个包超时清除，然后又收到
+    */
+    /**
+    else if (iCurSerial < it->second.m_iFirstSerial)
+    {
+    it->second.m_iFirstSerial = iCurSerial;
+    OnRecvComplete(it->second);
+    }*/
+    else if(iCurSerial > it->second.m_iFirstSerial)
+    {
+        PacketRecvDesc desc;
+        desc.m_dwRecvTickCount = GetTickCount();
+        PackageInterval interval;
+        interval.m_iStartSerial = iCurSerial;
+        interval.m_iPackageSize = pHeader->m_uSize;
+        desc.m_interval = interval;
+        desc.m_strContent = strData;
+        //将封包区间插入区间集合，等待之前的封包接收
+        InsertRecvInterval(desc, it->second.m_recvDescSet);
     }
     return true;
 }
 
 bool Ups::OnRecvUpsAck(const string &strUnique, UpsHeader *pHeader)
 {
-    CScopedLocker lock(this);
+    CScopedLocker lock(&m_sendLock);
     map<string, PackageSendCache>::iterator it = m_sendCache.find(strUnique);
     if (it == m_sendCache.end())
     {
@@ -232,7 +230,7 @@ UpsHeader *Ups::DecodeHeader(UpsHeader *pHeader)
 
 bool Ups::OnRecvPostData(const char *addr, unsigned short uPort, UpsHeader *pHeader, const string &strUnique, const string &strData)
 {
-    CScopedLocker lock(this);
+    CScopedLocker lock(&m_recvLock);
     map<string, PackageRecvCache>::iterator it;
     if (m_recvCache.end() == (it = m_recvCache.find(strUnique)))
     {
@@ -275,6 +273,10 @@ bool Ups::OnRecvUdpData(const char *addr, unsigned short uPort, const char *pDat
         case OPT_SEND_DATA:
             {
                 strUnique = GetConnectUnique(addr, uPort, MARK_RECV);
+
+                string dbg = fmt("send data serial:%d\n", header.m_uSerial);
+                OutputDebugStringA(dbg.c_str());
+
                 SendAck(addr, uPort, &header);
                 OnRecvUpsData(addr, uPort, strUnique, &header, string(pData + sizeof(UpsHeader), iDataLength));
             }
@@ -312,10 +314,6 @@ DWORD Ups::RecvThread(LPVOID pParam)
         iAddrSize = sizeof(clientAddr);
         int iRecvSize = recvfrom(ptr->m_udpSocket, buffer, iBufferSize, 0, (sockaddr *)&clientAddr, &iAddrSize);
 
-        static int s_dbg = 0;
-        string str = fmt("count2222:%d, size:%d, err:%d\n", s_dbg++, iRecvSize, WSAGetLastError());
-        OutputDebugStringA(str.c_str());
-
         if (iRecvSize <= 0)
         {
             break;
@@ -345,24 +343,19 @@ bool Ups::SendToInternal(const string &strIp, USHORT uPort, const string &strDat
 
 bool Ups::OnCheckPacketSendStat()
 {
-    DWORD dwCurCount = GetTickCount();
-    CScopedLocker lock(this);
+    CScopedLocker lock(&m_sendLock);
     for (map<string, PackageSendCache>::iterator it = m_sendCache.begin() ; it != m_sendCache.end() ; it++)
     {
         for (vector<PacketSendDesc *>::iterator ij = it->second.m_sendSet.begin() ; ij != it->second.m_sendSet.end() ;)
         {
             PacketSendDesc *desc = *ij;
-            if (dwCurCount - desc->m_stat.m_dwLastSendCount >= TIMESLICE_STAT)
-            {
-                desc->m_stat.m_dwLastSendCount = dwCurCount;
-                SendToInternal(it->second.m_strRemoteIp, it->second.m_uReomtePort, desc->m_strContent);
-                desc->m_stat.m_dwTestCount++;
+            SendToInternal(it->second.m_strRemoteIp, it->second.m_uReomtePort, desc->m_strContent);
+            desc->m_stat.m_dwTestCount++;
 
-                if (desc->m_stat.m_dwTestCount > MAX_TESTCOUNT)
-                {
-                    ij = it->second.m_sendSet.erase(ij);
-                    continue;
-                }
+            if (desc->m_stat.m_dwTestCount > MAX_TESTCOUNT)
+            {
+                ij = it->second.m_sendSet.erase(ij);
+                continue;
             }
             ij++;
         }
@@ -372,7 +365,7 @@ bool Ups::OnCheckPacketSendStat()
 
 bool Ups::OnCheckPacketRecvStat()
 {
-    CScopedLocker lock(this);
+    CScopedLocker lock(&m_recvLock);
     DWORD dwCurCount = GetTickCount();
     for (map<string, PackageRecvCache>::iterator it = m_recvCache.begin() ; it != m_recvCache.end() ; it++)
     {
@@ -457,19 +450,33 @@ vector<PacketSendDesc *> Ups::GetLogicSetFromRawData(const string &strData, int 
     return result;
 }
 
-DWORD Ups::StatThread(LPVOID pParam)
+DWORD Ups::SendStatThread(LPVOID pParam)
 {
     Ups *ptr = (Ups *)pParam;
-    HANDLE arry [] = {ptr->m_hStatEvent, ptr->m_hStopEvent};
     while (true)
     {
-        DWORD dwRet = WaitForMultipleObjects(RTL_NUMBER_OF(arry), arry, FALSE, TIMESLICE_STAT);
+        DWORD dwRet = WaitForSingleObject(ptr->m_hStopEvent, TIMESLICE_STAT);
 
         if ((WAIT_OBJECT_0 + 1) == dwRet)
         {
             break;
         }
         ptr->OnCheckPacketSendStat();
+    }
+    return 0;
+}
+
+DWORD Ups::RecvStatThread(LPVOID pParam)
+{
+    Ups *ptr = (Ups *)pParam;
+    while (true)
+    {
+        DWORD dwRet = WaitForSingleObject(ptr->m_hStopEvent, TIMESLICE_STAT);
+
+        if ((WAIT_OBJECT_0 + 1) == dwRet)
+        {
+            break;
+        }
         ptr->OnCheckPacketRecvStat();
     }
     return 0;
@@ -532,15 +539,16 @@ bool Ups::UpsInit(unsigned short uLocalPort, bool bKeepAlive)
     }
 
     m_bInit = true;
-    //int nRecvBuf = 50 * 1024 * 1024;       //设置成5M
-    //int res = setsockopt(m_udpSocket, SOL_SOCKET, SO_RCVBUF, (const char *)&nRecvBuf,sizeof(nRecvBuf));
+    int nRecvBuf = 50 * 1024 * 1024;
+    int res = setsockopt(m_udpSocket, SOL_SOCKET, SO_RCVBUF, (const char *)&nRecvBuf,sizeof(nRecvBuf));
 
     m_uMagicNum = GetMagicNumber();
     m_hStatEvent = CreateEventW(NULL, FALSE, FALSE, NULL);
     m_hStopEvent = CreateEventW(NULL, TRUE, FALSE, NULL);
     m_hRecvEvent = CreateEventW(NULL, TRUE, FALSE, NULL);
     m_hRecvThread = CreateThread(NULL, 0, RecvThread, this, 0, NULL);
-    m_hStatThread = CreateThread(NULL, 0, StatThread, this, 0, NULL);
+    m_hSendStatThread = CreateThread(NULL, 0, SendStatThread, this, 0, NULL);
+    m_hRecvStatThread = CreateThread(NULL, 0, RecvStatThread, this, 0, NULL);
     return true;
 }
 
@@ -562,11 +570,10 @@ bool Ups::UpsClose()
     m_hStatEvent = NULL;
     m_hRecvEvent = NULL;
 
-    CloseHandle(m_hStatThread);
-    CloseHandle(m_hRecvThread);
-    m_hStatThread = NULL;
-    m_hRecvThread = NULL;
-    m_iRecvPacketCount = 0;
+    CloseHandle(m_hSendStatThread);
+    CloseHandle(m_hRecvStatThread);
+    m_hSendStatThread = NULL;
+    m_hRecvStatThread = NULL;
     return true;
 }
 
@@ -584,7 +591,6 @@ bool Ups::UpsPost(const char *addr, unsigned short uPort, const char *pData, int
 bool Ups::PushCache(const string &strUnique, const char *ip, USHORT uPort, PacketSendDesc *desc)
 {
     map<string, PackageSendCache>::iterator it;
-    desc->m_stat.m_dwLastSendCount = GetTickCount();
     if (m_sendCache.end() == (it = m_sendCache.find(strUnique)))
     {
         PackageSendCache cache;
@@ -613,9 +619,8 @@ bool Ups::UpsSend(const char *addr, unsigned short uPort, const char *pData, int
         SendToInternal(addr, uPort, ptr->m_strContent);
 
         {
-            CScopedLocker lock(this);
+            CScopedLocker lock(&m_sendLock);
             PushCache(strUnique, addr, uPort, ptr);
-            ptr->m_stat.m_dwLastSendCount = GetTickCount();
         }
     }
     return true;
@@ -624,27 +629,20 @@ bool Ups::UpsSend(const char *addr, unsigned short uPort, const char *pData, int
 int Ups::UpsRecv(string &strIp, USHORT &uPort, string &strData)
 {
     WaitForSingleObject(m_hRecvEvent, INFINITE);
-    CScopedLocker lock(this);
-    for (map<string, PackageRecvCache>::iterator it = m_recvCache.begin() ; it != m_recvCache.end() ; it++)
+    CScopedLocker lock(&m_resultLock);
+    if (m_result.size() > 0)
     {
-        if (!it->second.m_CompleteSet.empty())
+        PackageRecvResult result = *m_result.begin();
+        m_result.pop_front();
+        if (m_result.empty())
         {
-            strIp = it->second.m_strIp;
-            uPort = it->second.m_uPort;
-            strData = *(it->second.m_CompleteSet.begin());
-            int iSize = strData.size();
-            it->second.m_CompleteSet.erase(it->second.m_CompleteSet.begin());
-            m_iRecvPacketCount--;
-
-            string dbg = fmt("m_iRecvPacketCount sub:%d cache:%d\n", m_iRecvPacketCount, it->second.m_CompleteSet.size());
-            OutputDebugStringA(dbg.c_str());
-
-            if (m_iRecvPacketCount == 0)
-            {
-                ResetEvent(m_hRecvEvent);
-            }
-            return iSize;
+            ResetEvent(m_hRecvEvent);
         }
+
+        strIp = result.m_strIp;
+        uPort = result.m_uPort;
+        strData = result.m_strContent;
+        return strData.size();
     }
     return 0;
 }
