@@ -20,6 +20,7 @@ HINSTANCE g_hInst = NULL;
 
 #define TEST_IP_SERV1            "112.232.14.36"
 #define TEST_IP_SERV2            "192.168.1.101"
+#define TEST_IP_SERV3            "10.10.16.38"
 #define TEST_DOMAIN              "p2pdbg.picp.io"
 #define TEST_PORT_LOCAL          9977
 #define TEST_PORT_SERV           9971

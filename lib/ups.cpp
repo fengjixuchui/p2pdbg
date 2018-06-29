@@ -260,6 +260,11 @@ bool Ups::OnRecvUpsKeepalive(const char *addr, unsigned short uPort, UpsHeader *
     {
         SetEvent(m_hNetActiveEvent);
     }
+
+    UpsHeader header;
+    memcpy(&header, pHeader, sizeof(header));
+    EncodeHeader(&header);
+    SendToInternal(addr, uPort, string((const char *)&header, sizeof(header)));
     return true;
 }
 
