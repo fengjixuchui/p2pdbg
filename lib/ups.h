@@ -132,10 +132,11 @@ public:
     virtual ~Ups();
 
     bool UpsInit(unsigned short uLocalPort, bool bKeepAlive);
-    bool UpsClose();
+    bool UpsConnect(const char *addr, unsigned short uPort, int iTimeOut = 5000);
     bool UpsPost(const char *addr, unsigned short uPort, const char *pData, int iLength);
-    bool UpsSend(const char *addr, unsigned short uPort, const char *pData, int iLength);
+    bool UpsSend(const char *pData, int iLength);
     int UpsRecv(string &strIp, USHORT &uPort, string &strData);
+    bool UpsClose();
 
 protected:
     bool TestBindLocalPort(SOCKET sock, unsigned short uLocalPort);
@@ -145,7 +146,7 @@ protected:
     bool IsValidMagic(unsigned short uMagic);
     bool SendAck(const char *ip, USHORT uPort, UpsHeader *pHeader);
     bool InsertRecvInterval(PacketRecvDesc desc, vector<PacketRecvDesc> &descSet);
-    bool PushCache(const string &strUnique, const char *ip, USHORT uPort, PacketSendDesc *desc);
+    bool PushCache(PacketSendDesc *desc);
     bool SendToInternal(const string &strIp, USHORT uPort, const string &strData);
     vector<PacketSendDesc *> GetLogicSetFromRawData(const string &strData, int iOpt);
     string GetConnectUnique(const string &ip, unsigned short uPort, const string &strMark);
@@ -156,6 +157,7 @@ protected:
     bool OnRecvComplete(PackageRecvCache &recvCache);
     bool OnRecvUpsData(const char *addr, unsigned short uPort, const string &strUnique, UpsHeader *pHeader, const string &strData);
     bool OnRecvUpsAck(const string &strUnique, UpsHeader *pHeader);
+    bool OnRecvUpsKeepalive(const char *addr, unsigned short uPort, UpsHeader *pHeader);
     bool OnRecvPostData(const char *addr, unsigned short uPort, UpsHeader *pHeader, const string &strUnique, const string &strData);
     UpsHeader *PacketHeader(unsigned short uOpt, unsigned short uSerial, unsigned short uLength, UpsHeader *ptr);
     UpsHeader *EncodeHeader(UpsHeader *pHeader);
@@ -178,12 +180,21 @@ protected:
     HANDLE m_hStatEvent;
     HANDLE m_hStopEvent;
     HANDLE m_hRecvEvent;
+    HANDLE m_hSendNotifyEvent;
+    HANDLE m_hCurSendWndComplete;
+    HANDLE m_hNetActiveEvent;
+    bool m_bNetActive;
+    string m_strReomteIp;
+    unsigned short m_uReomtePort;
 
     CCriticalSectionLockable m_resultLock;
     CCriticalSectionLockable m_sendLock;
     CCriticalSectionLockable m_recvLock;
     //发送封包缓存
-    map<string, PackageSendCache> m_sendCache;
+    vector<PacketSendDesc *> m_sendCache;
+    //当前的发送窗口
+    vector<PacketSendDesc *> m_curSendWnd;
+
     //接受封包缓存
     map<string, PackageRecvCache> m_recvCache;
     //接收数据结果集

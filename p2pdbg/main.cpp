@@ -54,7 +54,7 @@ static DWORD WINAPI _ClientDbgThread(LPVOID pParam)
     {
         memset(buffer, 'a', 145);
         wnsprintfA(buffer + 145, 128, " packet %d", iCount);
-        gs_pUpsClient->UpsSend(strServIp.c_str(), TEST_PORT_SERV, buffer, lstrlenA(buffer));
+        gs_pUpsClient->UpsSend(buffer, lstrlenA(buffer));
 
         iCount++;
         if (iCount >= 5000)
