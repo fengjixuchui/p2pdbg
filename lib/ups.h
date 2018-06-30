@@ -170,6 +170,7 @@ protected:
 
 protected:
     bool m_bInit;
+    bool m_bFirstSend;
     int m_uLocalPort;
     string m_strLocalIp;
     unsigned long m_iSendSerial;

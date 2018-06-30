@@ -14,6 +14,7 @@ Ups::Ups()
     m_uMagicNum = 0;
     m_bNetActive = false;
     m_hSendNotifyEvent = NULL;
+    m_bFirstSend = true;
 }
 
 Ups::~Ups()
@@ -354,7 +355,22 @@ bool Ups::OnCheckPacketSendStat()
             /**
             用一组数据制作一个数据窗口，循环发送数据并等待个窗口数据发送完成
             */
-            for (int i = 0 ; i < 25 && m_sendCache.size() > 0; i++)
+            int iWndCount = 0;
+            if (m_bFirstSend)
+            {
+                m_bFirstSend = false;
+                iWndCount = 1;
+            }
+            else
+            {
+                iWndCount = 25;
+            }
+
+            /**
+            首次发送可能会发生先收到第2个或者第3个包，这会导致首个包收不到
+            通过单独发送首个包规避这个问题。
+            */
+            for (int i = 0 ; i < iWndCount && m_sendCache.size() > 0; i++)
             {
                 vector<PacketSendDesc *>::iterator it = m_sendCache.begin();
                 m_curSendWnd.push_back(*it);
@@ -556,6 +572,7 @@ bool Ups::UpsInit(unsigned short uLocalPort, bool bKeepAlive)
     }
 
     m_bInit = true;
+    m_bFirstSend = true;
     int nRecvBuf = 50 * 1024 * 1024;
     int res = setsockopt(m_udpSocket, SOL_SOCKET, SO_RCVBUF, (const char *)&nRecvBuf,sizeof(nRecvBuf));
 
@@ -623,6 +640,7 @@ bool Ups::UpsClose()
     m_hNetActiveEvent = NULL;
     m_hSendNotifyEvent = NULL;
     m_hCurSendWndComplete = NULL;
+    m_bFirstSend = true;
     return true;
 }
 
