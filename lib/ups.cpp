@@ -107,6 +107,7 @@ bool Ups::CheckDataMagic(UpsHeader *header, PackageRecvCache &cache)
         cache.m_recvDescSet.clear();
         cache.m_iFirstSerial = header->m_uSerial;
         cache.m_iMagicNum = header->m_uMagic;
+        cache.m_iSerialGrow = 0;
     }
     return true;
 }
@@ -120,8 +121,6 @@ bool Ups::PushCompletePacket(PackageRecvCache &cache, const string &strData)
     result.m_strContent = strData;
     m_result.push_back(result);
 
-    //string dbg = fmt("m_iRecvPacketCount:%d\n", m_iRecvPacketCount);
-    //OutputDebugStringA(dbg.c_str());
     SetEvent(m_hRecvEvent);
     return true;
 }
@@ -145,41 +144,22 @@ bool Ups::OnRecvUpsData(const char *addr, unsigned short uPort, const string &st
     //session是否发生变化
     CheckDataMagic(pHeader, it->second);
 
-    //数据接收序号出现环的情况
-    if (it->second.m_iFirstSerial == 0xfffe)
+    int iCurSerial = (pHeader->m_uSerial);
+    if (iCurSerial < it->second.m_iFirstSerial)
     {
-        it->second.m_iSerialGrow += 0xffff;
+        return true;
     }
 
-    int iCurSerial = (pHeader->m_uSerial + it->second.m_iSerialGrow);
-    if (iCurSerial == it->second.m_iFirstSerial)
-    {
-        it->second.m_iFirstSerial++;
-        PushCompletePacket(it->second, strData);
-        OnRecvComplete(it->second);
-    }
-    /**
-    极偶然情况会走此处逻辑，比如首次接收的是第二个包
-    比如前一个包超时清除，然后又收到
-    */
-    /**
-    else if (iCurSerial < it->second.m_iFirstSerial)
-    {
-    it->second.m_iFirstSerial = iCurSerial;
+    PacketRecvDesc desc;
+    desc.m_dwRecvTickCount = GetTickCount();
+    PackageInterval interval;
+    interval.m_iStartSerial = iCurSerial;
+    interval.m_iPackageSize = pHeader->m_uSize;
+    desc.m_interval = interval;
+    desc.m_strContent = strData;
+    //将封包区间插入区间集合，等待之前的封包接收
+    InsertRecvInterval(desc, it->second.m_recvDescSet);
     OnRecvComplete(it->second);
-    }*/
-    else if(iCurSerial > it->second.m_iFirstSerial)
-    {
-        PacketRecvDesc desc;
-        desc.m_dwRecvTickCount = GetTickCount();
-        PackageInterval interval;
-        interval.m_iStartSerial = iCurSerial;
-        interval.m_iPackageSize = pHeader->m_uSize;
-        desc.m_interval = interval;
-        desc.m_strContent = strData;
-        //将封包区间插入区间集合，等待之前的封包接收
-        InsertRecvInterval(desc, it->second.m_recvDescSet);
-    }
     return true;
 }
 
@@ -212,7 +192,7 @@ UpsHeader *Ups::EncodeHeader(UpsHeader *pHeader)
 {
     pHeader->m_uMagic = htons(pHeader->m_uMagic);
     pHeader->m_uOpt = htons(pHeader->m_uOpt);
-    pHeader->m_uSerial = htons(pHeader->m_uSerial);
+    pHeader->m_uSerial = htonl(pHeader->m_uSerial);
     pHeader->m_uSize = htons(pHeader->m_uSize);
     return pHeader;
 }
@@ -221,7 +201,7 @@ UpsHeader *Ups::DecodeHeader(UpsHeader *pHeader)
 {
     pHeader->m_uMagic = ntohs(pHeader->m_uMagic);
     pHeader->m_uOpt = ntohs(pHeader->m_uOpt);
-    pHeader->m_uSerial = ntohs(pHeader->m_uSerial);
+    pHeader->m_uSerial = ntohl(pHeader->m_uSerial);
     pHeader->m_uSize = ntohs(pHeader->m_uSize);
     return pHeader;
 }
@@ -245,7 +225,7 @@ bool Ups::OnRecvPostData(const char *addr, unsigned short uPort, UpsHeader *pHea
     return true;
 }
 
-UpsHeader *Ups::PacketHeader(unsigned short uOpt, unsigned short uSerial, unsigned short uLength, UpsHeader *ptr)
+UpsHeader *Ups::PacketHeader(unsigned short uOpt, unsigned long uSerial, unsigned short uLength, UpsHeader *ptr)
 {
     ptr->m_uMagic = m_uMagicNum;
     ptr->m_uOpt = uOpt;
@@ -285,10 +265,14 @@ bool Ups::OnRecvUdpData(const char *addr, unsigned short uPort, const char *pDat
         case OPT_SEND_DATA:
             {
                 strUnique = GetConnectUnique(addr, uPort, MARK_RECV);
-
-                string dbg = fmt("send data serial:%d\n", header.m_uSerial);
-                OutputDebugStringA(dbg.c_str());
-
+                /**
+                map<string, PackageRecvCache>::iterator it;
+                if (m_recvCache.end() != (it = m_recvCache.find(strUnique)))
+                {
+                    string dbg = fmt("recv data3:%d\n", header.m_uSerial + it->second.m_iSerialGrow);
+                    OutputDebugStringA(dbg.c_str());
+                }
+                */
                 SendAck(addr, uPort, &header);
                 OnRecvUpsData(addr, uPort, strUnique, &header, string(pData + sizeof(UpsHeader), iDataLength));
             }
@@ -415,13 +399,8 @@ bool Ups::OnCheckPacketRecvStat()
     return true;
 }
 
-unsigned short Ups::GetSendSerial()
+unsigned long Ups::GetSendSerial()
 {
-    if (m_iSendSerial == 0xffff)
-    {
-        m_iSendSerial = 0;
-        return m_iSendSerial;
-    }
     return m_iSendSerial++;
 }
 
@@ -473,7 +452,7 @@ vector<PacketSendDesc *> Ups::GetLogicSetFromRawData(const string &strData, int 
 
         if (opt == OPT_SEND_DATA)
         {
-            PacketHeader(opt, m_iSendSerial++, uSize, &(ptr->m_header));
+            PacketHeader(opt, GetSendSerial(), uSize, &(ptr->m_header));
         }
         else
         {

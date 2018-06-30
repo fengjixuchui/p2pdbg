@@ -27,6 +27,7 @@ using namespace std;
 #define MAGIC_SEED              0xeb                //魔数种子
 #define PORT_LOCAL_BASE         35001               //本地端口基数
 #define BIND_TEST_COUNT         50                  //随机端口尝试次数
+#define MAX_SERIAL              64                  //最大封包序号
 
 //操作指令
 #define OPT_SEND_DATA           0x0001              //安全数据传送指令
@@ -46,11 +47,11 @@ UpsHeader中各个字段通过网络序编码
 */
 struct UpsHeader
 {
-    unsigned short m_uMagic;        //ups头魔法数
-    unsigned short m_uOpt;          //操作指令
+    unsigned short m_uMagic;       //ups头魔法数
+    unsigned short m_uOpt;         //操作指令
 
-    unsigned short m_uSerial;       //封包序号 OPT_SEND:本次发送的封包序号 OPT_ACK:收到封包的序号
-    unsigned short m_uSize;         //逻辑包大小 OPT_SEND:本次发送的封包大小 OPT_ACK:收到封包的序号
+    unsigned long m_uSerial;       //封包序号 OPT_SEND:本次发送的封包序号 OPT_ACK:收到封包的序号
+    unsigned short m_uSize;        //逻辑包大小 OPT_SEND:本次发送的封包大小 OPT_ACK:收到封包的序号
 
     UpsHeader() {
     }
@@ -90,8 +91,8 @@ struct PackageSendCache
 
 struct PackageInterval
 {
-    int m_iStartSerial;
-    int m_iPackageSize;
+    unsigned long m_iStartSerial;
+    unsigned long m_iPackageSize;
 };
 
 struct PacketRecvDesc
@@ -159,10 +160,10 @@ protected:
     bool OnRecvUpsAck(const string &strUnique, UpsHeader *pHeader);
     bool OnRecvUpsKeepalive(const char *addr, unsigned short uPort, UpsHeader *pHeader);
     bool OnRecvPostData(const char *addr, unsigned short uPort, UpsHeader *pHeader, const string &strUnique, const string &strData);
-    UpsHeader *PacketHeader(unsigned short uOpt, unsigned short uSerial, unsigned short uLength, UpsHeader *ptr);
+    UpsHeader *PacketHeader(unsigned short uOpt, unsigned long uSerial, unsigned short uLength, UpsHeader *ptr);
     UpsHeader *EncodeHeader(UpsHeader *pHeader);
     UpsHeader *DecodeHeader(UpsHeader *pHeader);
-    unsigned short GetSendSerial();
+    unsigned long GetSendSerial();
     static DWORD WINAPI RecvThread(LPVOID pParam);
     static DWORD WINAPI SendStatThread(LPVOID pParam);
     static DWORD WINAPI RecvStatThread(LPVOID pParam);
@@ -171,7 +172,7 @@ protected:
     bool m_bInit;
     int m_uLocalPort;
     string m_strLocalIp;
-    int m_iSendSerial;
+    unsigned long m_iSendSerial;
     unsigned short m_uMagicNum;
     SOCKET m_udpSocket;
     HANDLE m_hRecvThread;
