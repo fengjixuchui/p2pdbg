@@ -48,6 +48,7 @@ static DWORD WINAPI _ClientDbgThread(LPVOID pParam)
 {
     string strServIp = _GetSerIpFromDomain(TEST_DOMAIN);
     gs_pUpsClient->UpsInit(0, false);
+    bool b = gs_pUpsClient->UpsConnect(strServIp.c_str(), TEST_PORT_SERV);
 
     int iCount = 0;
     char buffer[1024] = {0};

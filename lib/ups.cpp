@@ -370,7 +370,7 @@ bool Ups::OnCheckPacketSendStat()
             /**
             用一组数据制作一个数据窗口，循环发送数据并等待个窗口数据发送完成
             */
-            for (int i = 0 ; i < 5 && m_sendCache.size() > 0; i++)
+            for (int i = 0 ; i < 25 && m_sendCache.size() > 0; i++)
             {
                 vector<PacketSendDesc *>::iterator it = m_sendCache.begin();
                 m_curSendWnd.push_back(*it);
@@ -391,7 +391,7 @@ bool Ups::OnCheckPacketSendStat()
             }
 
             DWORD dwResult = WaitForSingleObject(m_hCurSendWndComplete, 500);
-            if (dwResult == WAIT_OBJECT_0)
+            if (m_curSendWnd.empty())
             {
                 break;
             }
@@ -600,11 +600,17 @@ bool Ups::UpsConnect(const char *addr, unsigned short uPort, int iTimeOut)
     UpsHeader header;
     PacketHeader(OPT_KEEPALIVE, 0, 0, &header);
 
+    DWORD dwStartCount = GetTickCount();
     while(true) {
         SendToInternal(m_strReomteIp, m_uReomtePort, string((const char *)&header, sizeof(header)));
         if (WAIT_OBJECT_0 == WaitForSingleObject(m_hNetActiveEvent, 100))
         {
             return true;
+        }
+
+        if (GetTickCount() - dwStartCount >= (DWORD)iTimeOut)
+        {
+            return false;
         }
     }
     return false;
@@ -664,8 +670,6 @@ bool Ups::UpsSend(const char *pData, int iLength)
     for (vector<PacketSendDesc *>::iterator it = result.begin() ; it != result.end() ; it++)
     {
         PacketSendDesc *ptr = *it;
-        SendToInternal(m_strReomteIp, m_uReomtePort, ptr->m_strContent);
-
         {
             CScopedLocker lock(&m_sendLock);
             PushCache(ptr);
