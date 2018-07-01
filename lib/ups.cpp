@@ -54,15 +54,15 @@ unsigned short Ups::GetMagicNumber()
     DWORD dw = GetTickCount();
     unsigned short hight = (dw & 0xff);
     unsigned short low = (hight ^ MAGIC_SEED);
-    unsigned short uMagic = ((hight << 4) | low);
+    unsigned short uMagic = ((hight << 8) | low);
     return uMagic;
 }
 
 bool Ups::IsValidMagic(unsigned short uMagic)
 {
-    unsigned short hight = (uMagic >> 4);
+    unsigned short hight = ((uMagic >> 8) & 0xff);
     unsigned short low = (uMagic & 0xff);
-    return (low == (hight ^ MAGIC_SEED));
+    return (low == ((hight ^ MAGIC_SEED) & 0xff));
 }
 
 bool Ups::SendAck(const char *ip, USHORT uPort, UpsHeader *pHeader)
@@ -255,7 +255,7 @@ bool Ups::OnRecvUdpData(const char *addr, unsigned short uPort, const char *pDat
     memcpy(&header, pData, sizeof(header));
     DecodeHeader(&header);
 
-    if (IsValidMagic(header.m_uMagic))
+    if (!IsValidMagic(header.m_uMagic))
     {
         return false;
     }

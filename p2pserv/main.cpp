@@ -67,8 +67,27 @@ static DWORD WINAPI _DbgThread(LPVOID pParam)
     return 0;
 }
 
+unsigned short _GetMagicNumber()
+{
+    DWORD dw = 0x1122;
+    unsigned short hight = (dw & 0xff);
+    unsigned short low = (hight ^ MAGIC_SEED);
+    unsigned short uMagic = ((hight << 8) | low);
+    return uMagic;
+}
+
+bool _IsValidMagic(unsigned short uMagic)
+{
+    unsigned short hight = ((uMagic >> 8) & 0xff);
+    unsigned short low = (uMagic & 0xff);
+    return (low == ((hight ^ MAGIC_SEED) & 0xff));
+}
+
 int WINAPI WinMain(HINSTANCE hT, HINSTANCE hP, LPSTR szCmdLine, int iShow)
 {
+    unsigned short aa = _GetMagicNumber();
+    bool b = _IsValidMagic(aa);
+
     WSADATA wsaData;
     WSAStartup( MAKEWORD(2, 2), &wsaData);
 
