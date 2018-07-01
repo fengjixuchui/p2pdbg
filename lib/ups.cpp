@@ -250,7 +250,7 @@ bool Ups::OnRecvUpsKeepalive(const char *addr, unsigned short uPort, UpsHeader *
 }
 
 bool Ups::OnRecvUdpData(const char *addr, unsigned short uPort, const char *pData, int iLength)
-{
+ {
     UpsHeader header;
     memcpy(&header, pData, sizeof(header));
     DecodeHeader(&header);

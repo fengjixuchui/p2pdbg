@@ -45,6 +45,7 @@ using namespace std;
 为尽可能设计简单，m_uSerial字段仅对OPT_SEND_DATA指令有效
 UpsHeader中各个字段通过网络序编码
 */
+#pragma pack(1)
 struct UpsHeader
 {
     unsigned short m_uMagic;       //ups头魔法数
@@ -56,6 +57,7 @@ struct UpsHeader
     UpsHeader() {
     }
 };
+#pragma pack()
 
 struct PacketSendStat
 {
