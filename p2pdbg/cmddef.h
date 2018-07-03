@@ -1,136 +1,87 @@
 #ifndef P2P_DEFINE_H_H_
 #define P2P_DEFINE_H_H_
+
 /**
-协议格式Json格式
-<Protocol Start>
-*/
-#define CMD_START_MARK          "<Protocol Start>"
+ 协议格式Json格式
+ <Protocol Start>
+ */
+#define CMD_START_MARK "<Protocol Start>"
+#define CMD_FILE_MARK  "<File Start>"
 
 /**终端到服务端指令**/
 /**
-终端登陆
-{
-    "dataType":"login",
-    "unique":"终端标识",
-    "time":"发送时间",
-    "id":1234
+ 终端到服务端的心跳
+ {
+     "dataType":"heartbeat_c2s",
+     "unique":"终端标识",
+     "serial":111,
+     "time":"发送时间"
 
-    "clientDesc":"设备描述",
-    "ipInternal":"内部ip",
-    "portInternal":"内部的端口"
-}
-*/
-#define CMD_C2S_LOGIN           "login_c2s"
-
-/**
-终端登出
-{
-    "dataType":"logout",
-    "unique":"终端标识",
-    "time":"发送时间"
-}
-*/
-#define CMD_C2S_LOGOUT          "logout_c2s"
+     "clientDesc":"设备描述",
+     "ip":"内部ip",
+     "port":"内部端口"
+ }
+ */
+#define CMD_C2S_HEARTBEAT "heartbeat_c2s"
 
 /**
-终端到服务端的心跳
-{
-    "dataType":"heartbeat_c2s",
-    "unique":"终端标识",
-    "time":"发送时间"
-
-    "clientDesc":"设备描述",
-    "ipInternal":"内部ip",
-    "portInternal":"内部的端口"
-}
-*/
-#define CMD_C2S_HEARTBEAT       "heartbeat_c2s"
-
-/**
-终端请求用户列表
-{
-    "dataType":"getUserList",
-    "unique":"终端标识",
-    "time":"发送时间"
-}
-*/
-#define CMD_C2S_GETCLIENTS      "getUserList_c2s"
-
-/**
-终端请求net穿透
-{
-    "dataType":"testNetPass_c2s",
-    "unique":"终端标识",
-    "time":"发送时间",
-
-    "dstClient":""
-}
-*/
-#define CMD_C2S_TESTNETPASS     "testNetPass_c2s"
+ 终端请求用户列表
+ {
+     "dataType":"getUserList",
+     "serial":111,
+     "unique":"终端标识",
+     "time":"发送时间"
+ }
+ */
+#define CMD_C2S_GETCLIENTS "getUserList_c2s"
 
 /**服务端到终端指令**/
 /**
-终端请求net穿透
-{
-    "dataType":"testNetPass_s2c",
-    "time":"发送时间",
-
-    "srcUnique":"",
-    "srcInternalIp":"",
-    "srcInternalPort":1234,
-    "srcExternalIp:"",
-    "srcExternalPort":1234
-}
-*/
-#define CMD_S2C_TESTNETPASS     "testNetPass_s2c"
-
-/**
-服务端到终端心跳回执
-{
-    "dataType":"heartbeat_s2c",
-    "time":"发送时间",
-
-    "clientCount":用户数量,
-    "clientUpdateTime":客户端信息最后更新时间
-}
-*/
-#define CMD_S2C_HEARTBEAT      "heartbeat_s2c"
-
-/**
-服务端到终端请求用户列表回执
-{
-    "dataType":"getUserList_s2c",
-    "time":"发送时间",
-
-    "clients":
-    [
-        {"unique":"", "clientDesc":"", "ipInternal":"", "portInternal":"", "ipExternal":"", "portExternal":""},
-        ...
-    ]
-}
-*/
-#define CMD_S2C_GETCLIENTS      "getUserList_s2c"
+ 服务器转发其他用户数据
+ {
+    "dataType":"transdata_s2c",
+    "src":"来源终端标识",
+    "dst":"目标终端标识",
+    "content": {
+        "具体的数据内容"
+    }
+ }
+ */
+#define CMD_C2S_TRANSDATA "transdata_s2c"
 
 /**终端到终端指令**/
 /**
-终端请求net穿透
-{
-    "dataType":"testNetPass_c2c",
-    "unique":"终端标识",
-    "time":"发送时间",
+ 控制端请求执行命令
+ {
+     "dataType":"runcmd_c2c",
+     "unique":"终端标识",
+     "time":"发送时间",
 
-    "dstClient":""
-}
-*/
-#define CMD_C2C_TESTNETPASS     "testNetPass_c2c"
+     "cmd":"命令标识",
+     "content": {
+         ""
+     }
+ }
+ */
+#define CMD_C2C_TESTNETPASS "runcmd_c2c"
 
 /**
-终端到终端心跳
+ * 终端到终端的心跳
+ */
+#define CMD_C2C_HEARTBEAT "heartbeat_c2c"
+
+/**
+数据回执，所有数据统一以以下格式回执
 {
-    "dataType":"heartbeat_c2c",
-    "unique":"终端标识",
-    "time":"发送时间"
+    "dataType":"reply",
+    "id":111,
+    "stat":0,
+    "err":"",
+
+    "content":{
+        ...
+    }
 }
 */
-#define CMD_C2C_HEARTBEAT       "heartbeat_c2c"
+#define CMD_REPLY   "reply"
 #endif

@@ -35,6 +35,7 @@ using namespace std;
 
 #define OPT_REQUEST_ACK         0x0011              //数据接收应打包
 #define OPT_KEEPALIVE           0x0012              //链接包活包(备用)
+#define OPT_KEEPALIVE_ACK       0x0013              //包活包回执
 
 #define MARK_SEND               "send"              //数据发送标识
 #define MARK_RECV               "recv"              //数据接收标识

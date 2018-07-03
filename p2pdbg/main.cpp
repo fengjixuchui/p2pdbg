@@ -25,59 +25,13 @@ HINSTANCE g_hInst = NULL;
 #define TEST_PORT_LOCAL          9977
 #define TEST_PORT_SERV           9971
 
-static string _GetSerIpFromDomain(const char *domain)
-{
-    HOSTENT *host_entry = NULL;
-    host_entry = gethostbyname(domain);
-    if (host_entry != NULL)  
-    {
-        return fmt(
-            "%d.%d.%d.%d",
-            (host_entry->h_addr_list[0][0]&0x00ff),
-            (host_entry->h_addr_list[0][1]&0x00ff),
-            (host_entry->h_addr_list[0][2]&0x00ff),
-            (host_entry->h_addr_list[0][3]&0x00ff)
-            );
-    }
-    return "";
-}
-
-static Ups *gs_pUpsClient = new Ups();
-
-static DWORD WINAPI _ClientDbgThread(LPVOID pParam)
-{
-    string strServIp = _GetSerIpFromDomain(TEST_DOMAIN);
-    gs_pUpsClient->UpsInit(0, false);
-    bool b = gs_pUpsClient->UpsConnect(strServIp.c_str(), TEST_PORT_SERV);
-
-    int iCount = 0;
-    char buffer[1024] = {0};
-    while (true)
-    {
-        memset(buffer, 'a', 145);
-        wnsprintfA(buffer + 145, 128, " packet %d", iCount);
-        gs_pUpsClient->UpsSend(buffer, lstrlenA(buffer));
-
-        iCount++;
-        if (iCount >= 5000)
-        {
-            break;
-        }
-    }
-    return 0;
-}
-
 int WINAPI WinMain(HINSTANCE hT, HINSTANCE hP, LPSTR szCmdLine, int iShow)
 {
+    g_hInst = hT;
     WSADATA wsaData;
     WSAStartup( MAKEWORD(2, 2), &wsaData);
 
-    g_hInst = hT;
-    CreateThread(NULL, 0, _ClientDbgThread, NULL, 0, NULL);
-    MessageBoxW(NULL, L"client", L"test", 0);
-    return 0;
-
-    CWorkLogic::GetInstance()->StartWork(NULL);
+    CWorkLogic::GetInstance()->StartWork();
     ShowDbgViw();
     return 0;
 }

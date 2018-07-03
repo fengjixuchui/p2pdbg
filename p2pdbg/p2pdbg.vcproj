@@ -181,6 +181,14 @@
 				>
 			</File>
 			<File
+				RelativePath=".\dbgclient.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\dbgclient.h"
+				>
+			</File>
+			<File
 				RelativePath=".\dbgview.cpp"
 				>
 			</File>
@@ -198,14 +206,6 @@
 			</File>
 			<File
 				RelativePath=".\main.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\udpserv.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\udpserv.h"
 				>
 			</File>
 		</Filter>
@@ -266,14 +266,6 @@
 			</File>
 			<File
 				RelativePath="..\lib\mstring.h"
-				>
-			</File>
-			<File
-				RelativePath="..\lib\ups.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\lib\ups.h"
 				>
 			</File>
 			<File

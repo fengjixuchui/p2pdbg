@@ -22,7 +22,7 @@ Ups::~Ups()
 
 string Ups::GetConnectUnique(const string &ip, unsigned short uPort, const string &strMark)
 {
-    return fmt("%hs_%d-%hs_%d_%hs", ip.c_str(), uPort, m_strLocalIp.c_str(), m_uLocalPort, strMark.c_str());
+    return fmt("%hs_%d-%d_%hs", ip.c_str(), uPort, m_uLocalPort, strMark.c_str());
 }
 
 bool Ups::InsertRecvInterval(PacketRecvDesc desc, vector<PacketRecvDesc> &descSet)
@@ -68,7 +68,7 @@ bool Ups::IsValidMagic(unsigned short uMagic)
 bool Ups::SendAck(const char *ip, USHORT uPort, UpsHeader *pHeader)
 {
     UpsHeader ack;
-    PacketHeader(OPT_REQUEST_ACK, pHeader->m_uSerial, pHeader->m_uSize, &ack);
+    PacketHeader(OPT_REQUEST_ACK, pHeader->m_uSerial, 0, &ack);
     return SendToInternal(ip, uPort, string((const char *)&ack, sizeof(ack)));
 }
 
@@ -243,8 +243,7 @@ bool Ups::OnRecvUpsKeepalive(const char *addr, unsigned short uPort, UpsHeader *
     }
 
     UpsHeader header;
-    memcpy(&header, pHeader, sizeof(header));
-    EncodeHeader(&header);
+    PacketHeader(OPT_KEEPALIVE_ACK, 0, 0, &header);
     SendToInternal(addr, uPort, string((const char *)&header, sizeof(header)));
     return true;
 }
@@ -256,6 +255,11 @@ bool Ups::OnRecvUdpData(const char *addr, unsigned short uPort, const char *pDat
     DecodeHeader(&header);
 
     if (!IsValidMagic(header.m_uMagic))
+    {
+        return false;
+    }
+
+    if (iLength != (header.m_uSize + sizeof(UpsHeader)))
     {
         return false;
     }
@@ -294,6 +298,8 @@ bool Ups::OnRecvUdpData(const char *addr, unsigned short uPort, const char *pDat
             {
                 OnRecvUpsKeepalive(addr, uPort, &header);
             }
+            break;
+        case OPT_KEEPALIVE_ACK:
             break;
         default:
             break;
@@ -510,7 +516,7 @@ DWORD Ups::RecvStatThread(LPVOID pParam)
         {
             break;
         }
-        ptr->OnCheckPacketRecvStat();
+        //ptr->OnCheckPacketRecvStat();
     }
     return 0;
 }

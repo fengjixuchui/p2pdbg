@@ -94,7 +94,6 @@ static void _OnCommand(HWND hwnd, WPARAM wp, LPARAM lp)
     else if (id == IDC_SELECT_CONNECT)
     {
         int pos = SendMessageW(gs_hList, LVM_GETNEXTITEM, -1, LVNI_SELECTED);
-        CWorkLogic::GetInstance()->Connect(gs_vClients[pos].m_strUnique, CONNECT_TIMEOUT);
     }
 }
 
