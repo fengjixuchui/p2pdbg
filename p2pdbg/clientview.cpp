@@ -16,6 +16,7 @@
 using namespace std;
 
 #define CONNECT_TIMEOUT     (1000 * 5)
+#define TIMER_REFUSH_USERS  (6011)
 
 extern HINSTANCE g_hInst;
 static HWND gs_hParent = NULL;
@@ -45,25 +46,30 @@ static void _InitListCtrl() {
     col.pszText = L"设备标识";
     SendMessageW(gs_hList, LVM_INSERTCOLUMNW, 1, (LPARAM)&col);
 
-    col.cx = 260;
+    col.cx = 180;
     col.pszText = L"设备描述";
     SendMessageW(gs_hList, LVM_INSERTCOLUMNW, 2, (LPARAM)&col);
 
     col.cx = 120;
-    col.pszText = L"对端地址";
+    col.pszText = L"对端地址1";
     SendMessageW(gs_hList, LVM_INSERTCOLUMNW, 3, (LPARAM)&col);
+
+    col.cx = 120;
+    col.pszText = L"对端地址2";
+    SendMessageW(gs_hList, LVM_INSERTCOLUMNW, 4, (LPARAM)&col);
 }
 
 static void _AdjustListctrlWidth(){
     RECT rt = {0};
     GetWindowRect(gs_hList, &rt);
     int width = (rt.right - rt.left);
-    int lastWidth = (width - 40 - 220 - 260 - 30);
+    int lastWidth = (width - 40 - 220 - 180 - 120 - 30);
 
     SendMessageW(gs_hList, LVM_SETCOLUMNWIDTH, 0, 40);
     SendMessageW(gs_hList, LVM_SETCOLUMNWIDTH, 1, 220);
-    SendMessageW(gs_hList, LVM_SETCOLUMNWIDTH, 2, 260);
-    SendMessageW(gs_hList, LVM_SETCOLUMNWIDTH, 3, lastWidth);
+    SendMessageW(gs_hList, LVM_SETCOLUMNWIDTH, 2, 180);
+    SendMessageW(gs_hList, LVM_SETCOLUMNWIDTH, 3, 120);
+    SendMessageW(gs_hList, LVM_SETCOLUMNWIDTH, 4, lastWidth);
 }
 
 static void _OnInitDlg(HWND hwnd, WPARAM wp, LPARAM lp)
@@ -78,6 +84,8 @@ static void _OnInitDlg(HWND hwnd, WPARAM wp, LPARAM lp)
     SendMessageW(gs_hwnd, WM_SETICON, (WPARAM)TRUE, (LPARAM)LoadIconW(g_hInst, MAKEINTRESOURCEW(IDI_MAIN)));
     _AdjustListctrlWidth();
     _RefushListCtrl();
+
+    SetTimer(hwnd, TIMER_REFUSH_USERS, 1000, NULL);
 }
 
 static void _OnSize(){
@@ -94,6 +102,18 @@ static void _OnCommand(HWND hwnd, WPARAM wp, LPARAM lp)
     else if (id == IDC_SELECT_CONNECT)
     {
         int pos = SendMessageW(gs_hList, LVM_GETNEXTITEM, -1, LVNI_SELECTED);
+
+        if (pos < 0)
+        {
+            SetWindowTextW(gs_hStatus, L"请选择一个终端");
+            return;
+        }
+        ClientInfo client = gs_vClients[pos];
+        //连接对端
+        if (CWorkLogic::GetInstance()->ConnectReomte(client.m_strUnique))
+        {
+            SetWindowTextW(gs_hStatus, L"连接对端成功");
+        }
     }
 }
 
@@ -131,7 +151,10 @@ static VOID _OnGetListCtrlDisplsy(IN OUT NMLVDISPINFOW* ptr)
             s_wstrBuf = UtoW(info.m_strClientDesc);
             break;
         case 3:
-            s_wstrBuf = UtoW(info.m_strIpInternal);
+            s_wstrBuf = UtoW(fmt("%hs:%d", info.m_strIpInternal.c_str(), info.m_uPortInternal));
+            break;
+        case 4:
+            s_wstrBuf = UtoW(fmt("%hs:%d", info.m_strIpExternal.c_str(), info.m_uPortExternal));
             break;
         default:
             break;
@@ -160,6 +183,14 @@ static void _OnNotify(HWND hwnd, WPARAM wp, LPARAM lp)
     }
 }
 
+static void _OnTimer(HWND hwnd, WPARAM wp, LPARAM lp)
+{
+    if (wp == TIMER_REFUSH_USERS)
+    {
+        _RefushListCtrl();
+    }
+}
+
 static void _OnClose(HWND hwnd, WPARAM wp, LPARAM lp)
 {
     EndDialog(gs_hwnd, 0);
@@ -175,8 +206,12 @@ static INT_PTR CALLBACK _DialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
     case  WM_COMMAND:
         _OnCommand(hwndDlg, wParam, lParam);
         break;
+    case WM_TIMER:
+        _OnTimer(hwndDlg, wParam, lParam);
+        break;
     case WM_SIZE:
         _OnSize();
+        break;
     case WM_NOTIFY:
         _OnNotify(hwndDlg, wParam, lParam);
         break;

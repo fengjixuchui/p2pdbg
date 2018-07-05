@@ -40,8 +40,10 @@
  服务器转发其他用户数据
  {
     "dataType":"transdata_s2c",
+    "id":1111,
     "src":"来源终端标识",
     "dst":"目标终端标识",
+
     "content": {
         "具体的数据内容"
     }
@@ -63,7 +65,7 @@
      }
  }
  */
-#define CMD_C2C_TESTNETPASS "runcmd_c2c"
+#define CMD_C2C_RUNCMD "runcmd_c2c"
 
 /**
  * 终端到终端的心跳
@@ -76,7 +78,6 @@
     "dataType":"reply",
     "id":111,
     "stat":0,
-    "err":"",
 
     "content":{
         ...

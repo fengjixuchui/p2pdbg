@@ -9,12 +9,11 @@ CWorkLogic *CWorkLogic::ms_inst = NULL;
 
 CWorkLogic::CWorkLogic()
 {
-    m_hP2pNotify = CreateEventW(NULL, FALSE, FALSE, NULL);
     m_hCompleteNotify = CreateEventW(NULL, FALSE, FALSE, NULL);
-    m_bP2pStat = false;
     m_bInit = false;
     m_strServIp = IP_SERV;
     m_uServPort = PORT_SERV;
+    m_bConnectSucc = false;
 }
 
 void CWorkLogic::StartWork()
@@ -25,8 +24,9 @@ void CWorkLogic::StartWork()
     }
     m_bInit = true;
     m_uLocalPort = PORT_LOCAL;
-    m_c2serv.InitClient(IP_SERV, PORT_SERV, this);
-    RequestClients();
+    m_c2serv.InitClient(IP_SERV, PORT_SERV, 1, this);
+    m_strLocalIp = m_c2serv.GetLocalIp();
+    RequestClientInternal();
     m_hWorkThread = CreateThread(NULL, 0, WorkThread, this, 0, NULL);
 }
 
@@ -59,8 +59,46 @@ void CWorkLogic::GetJsonPack(Value &v, const string &strDataType)
     v["id"] = gs_iSerial++;
 }
 
+bool CWorkLogic::ConnectReomte(const string &strRemote)
+{
+    ClientInfo tmp;
+    {
+        CScopedLocker lock(&m_clientLock);
+        map<string, ClientInfo>::const_iterator it = m_clientInfos.find(strRemote);
+        if (it == m_clientInfos.end())
+        {
+            return false;
+        }
+        tmp = it->second;
+    }
+
+    do
+    {
+        //依次连接外部地址和内部地址进行尝试
+        if (m_c2client.InitClient(tmp.m_strIpExternal, tmp.m_uPortExternal, 1, this))
+        {
+            m_iDbgMode = 0;
+            break;
+        }
+
+        if (m_c2client.InitClient(tmp.m_strIpInternal, tmp.m_uPortInternal, 1, this))
+        {
+            m_iDbgMode = 0;
+            break;
+        }
+
+        //都失败的话通过服务端中转
+        m_iDbgMode = 1;
+    } while (false);
+
+    m_bConnectSucc = true;
+    m_DbgClient = tmp;
+    return true;
+}
+
 vector<ClientInfo> CWorkLogic::GetClientList()
 {
+    CScopedLocker lock(&m_clientLock);
     vector<ClientInfo> vResult;
     for (map<string, ClientInfo>::const_iterator it = m_clientInfos.begin() ; it != m_clientInfos.end() ; it++)
     {
@@ -70,12 +108,36 @@ vector<ClientInfo> CWorkLogic::GetClientList()
 }
 
 /**获取用户列表**/
-void CWorkLogic::RequestClients()
+string CWorkLogic::RequestClientInternal()
 {
     Value vJson;
     GetJsonPack(vJson, CMD_C2S_GETCLIENTS);
     string strResult;
     SendForResult(&m_c2serv, vJson, strResult);
+    return strResult;
+}
+
+//发送命令至被调试端
+bool CWorkLogic::SendToDbgClient(const string &strData)
+{
+    //直接发给对端
+    if (m_iDbgMode == 0)
+    {
+        SendData(&m_c2client, strData);
+    }
+    //通过服务端转发给对端
+    else if (m_iDbgMode == 1)
+    {
+        Value vContent;
+        Reader().parse(strData, vContent);
+        Value vPacket;
+        vPacket["dataType"] = CMD_C2S_TRANSDATA;
+        vPacket["src"] = UNIQUE;
+        vPacket["dst"] = m_DbgClient.m_strUnique;
+        vPacket["content"] = vContent;
+        SendData(&m_c2serv, FastWriter().write(vPacket));
+    }
+    return true;
 }
 
 bool CWorkLogic::SendData(CDbgClient *remote, const string &strData)
@@ -111,21 +173,16 @@ bool CWorkLogic::SendForResult(CDbgClient *remote, Value &vRequest, string &strR
 
 /**
 服务端到终端请求用户列表回执
-{
-    "dataType":"getUserList_s2c",
-    "time":"发送时间",
-
-    "clients":
-    [
-        {"unique":"", "clientDesc":"", "ipInternal":"", "portInternal":"", "ipExternal":"", "portExternal":""},
-        ...
-    ]
-}
 */
-void CWorkLogic::OnGetClients(const Value &vJson)
+void CWorkLogic::OnGetClientsInThread()
 {
+    string strReply = RequestClientInternal();
+
+    CScopedLocker lock(&m_clientLock);
     m_clientInfos.clear();
-    Value vClients = vJson["clients"];
+    Value vClients;
+    Reader().parse(strReply, vClients);
+    
     for (size_t i = 0 ; i < vClients.size() ; i++)
     {
         Value vSingle = vClients[i];
@@ -140,38 +197,68 @@ void CWorkLogic::OnGetClients(const Value &vJson)
     }
 }
 
+void CWorkLogic::OnReply(CDbgClient *ptr, const string &strData)
+{
+    Reader reader;
+    Value vJson;
+    reader.parse(strData, vJson);
+    if (vJson.type() != objectValue)
+    {
+        return;
+    }
+
+    string strDataType = vJson.get("dataType", "").asString();
+    string strUnique = vJson.get("unique", "").asString();
+    int id = vJson.get("id", 0).asUInt();
+
+    CScopedLocker lock(&m_requsetLock);
+    map<int, RequestInfo *>::const_iterator it;
+    if (m_requestPool.end() != (it = m_requestPool.find(id)))
+    {
+        RequestInfo *ptr = it->second;
+        *(ptr->m_pReply) = strData;
+        SetEvent(ptr->m_hNotify);
+        m_requestPool.erase(id);
+    }
+}
+
+//仅仅把外壳剥掉，继续处理
+void CWorkLogic::OnTransData(CDbgClient *ptr, const string &strData)
+{
+    Reader reader;
+    Value vJson;
+    reader.parse(strData, vJson);
+    if (vJson.type() != objectValue)
+    {
+        return;
+    }
+
+    string strContent = vJson["content"].asString();
+    OnSingleData(ptr, strContent);
+}
+
 void CWorkLogic::OnSingleData(CDbgClient *ptr, const string &strData)
 {
     Reader reader;
     Value vJson;
 
+    reader.parse(strData, vJson);
+    if (vJson.type() != objectValue)
+    {
+        return;
+    }
+
+    string strDataType = vJson.get("dataType", "").asString();
     try {
-        reader.parse(strData, vJson);
-
-        if (vJson.type() != objectValue)
-        {
-            return;
-        }
-
-        string strDataType = vJson.get("dataType", "").asString();
-        string strUnique = vJson.get("unique", "").asString();
-        int id = vJson.get("id", 0).asUInt();
-
+        //数据回执
         if (strDataType == CMD_REPLY)
         {
-            CScopedLocker lock(&m_requsetLock);
-            map<int, RequestInfo *>::const_iterator it;
-            if (m_requestPool.end() != (it = m_requestPool.find(id)))
-            {
-                RequestInfo *ptr = it->second;
-                *(ptr->m_pReply) = strData;
-                SetEvent(ptr->m_hNotify);
-                m_requestPool.erase(id);
-            }
+            OnReply(ptr, strData);
         }
-        else if (strDataType == CMD_C2S_GETCLIENTS)
+        //服务端转发数据
+        else if (strDataType == CMD_C2S_TRANSDATA)
         {
-            OnGetClients(vJson);
+            OnTransData(ptr, strData);
         }
     } catch (std::exception &e) {
         string str = e.what();
@@ -196,16 +283,7 @@ void CWorkLogic::OnSendServHeartbeat() {
     vJson["clientDesc"] = GetDevDesc();
     vJson["ipInternal"] = m_strLocalIp;
     vJson["portInternal"] = m_uLocalPort;
-    SendTo(FastWriter().write(vJson));
-}
-
-void CWorkLogic::OnSendP2pHearbeat() {
-    if (m_bP2pStat)
-    {
-        Value vJson;
-        GetJsonPack(vJson, CMD_C2C_HEARTBEAT);
-        SendTo(FastWriter().write(vJson));
-    }
+    SendData(&m_c2serv, FastWriter().write(vJson));
 }
 
 DWORD CWorkLogic::WorkThread(LPVOID pParam)
@@ -214,7 +292,7 @@ DWORD CWorkLogic::WorkThread(LPVOID pParam)
     while (true) {
         Sleep(1000);
         ptr->OnSendServHeartbeat();
-        ptr->OnSendP2pHearbeat();
+        ptr->OnGetClientsInThread();
     }
     return 0;
 }
@@ -247,8 +325,4 @@ void CWorkLogic::onRecvData(CDbgClient *ptr, const string &strData)
         string strSub = strData.substr(lastPos, strData.size() - lastPos);
         GetInstance()->OnSingleData(ptr, strSub);
     }
-}
-
-void CWorkLogic::SendTo(const string &strData)
-{
 }

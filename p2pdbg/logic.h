@@ -45,30 +45,34 @@ protected:
 
 public:
     static CWorkLogic *GetInstance();
-    static void WINAPI OnRecv(const string &strData, const string &strAddr, USHORT uPort);
     void StartWork();
-    void SendTo(const string &strData);
     vector<ClientInfo> GetClientList();
+    bool ConnectReomte(const string &strRemote);
 
 protected:
+    bool SendToDbgClient(const string &strData);
     bool SendData(CDbgClient *remote, const string &strData);
     void GetJsonPack(Value &v, const string &strDataType);
     void SetServAddr(const string &strServIp, USHORT uServPort);
     string GetDevDesc();
     /**获取用户列表**/
-    void RequestClients();
+    string RequestClientInternal();
     void OnSingleData(CDbgClient *ptr, const string &strData);
     static DWORD WINAPI WorkThread(LPVOID pParam);
     void OnSendServHeartbeat();
-    void OnSendP2pHearbeat();
-    void OnGetClients(const Value &vJson);
+    void OnGetClientsInThread();
+    void OnReply(CDbgClient *ptr, const string &strData);
+    void OnTransData(CDbgClient *ptr, const string &strData);
     bool SendForResult(CDbgClient *remote, Value &vRequest, string &strResult);
     virtual void onRecvData(CDbgClient *ptr, const string &strData);
 
 protected:
     bool m_bInit;
+
+    bool m_bConnectSucc;    //是否连接成功
+    int m_iDbgMode;         //调试模式 0:c2c 1:c2s
+
     HANDLE m_hWorkThread;
-    HANDLE m_hP2pNotify;
     string m_strLocalIp;
     USHORT m_uLocalPort;
     string m_strServIp;
@@ -77,15 +81,11 @@ protected:
     CDbgClient m_c2serv;    //指向服务端
     CDbgClient m_c2client;  //指向调试对端
 
-    /**p2p数据**/
-    bool m_bP2pStat;
-    string m_strP2pIp;
-    USHORT m_uP2pPort;
-    ClientInfo m_p2pInfo;
     HANDLE m_hCompleteNotify;
-
+    ClientInfo m_DbgClient;
     map<string, ClientInfo> m_clientInfos;
     CCriticalSectionLockable m_requsetLock;     //请求锁
+    CCriticalSectionLockable m_clientLock;      //客户端信息锁
 
     struct RequestInfo
     {
