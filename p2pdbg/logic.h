@@ -16,6 +16,35 @@ using namespace Json;
 #define PORT_LOCAL          8807
 #define DBGDESC             "p2pdbg"
 
+/**
+ 文件传输
+ {
+     "dataType":"fileTransfer",
+     "id":112233,
+     "fileUnique":"文件标识",
+     "src":"文件发送方",
+     "dst":"文件接收方",
+     "desc":"文件描述",
+     "fileSize":112233,
+     "fileName":"文件名"
+ }
+ <File Start>
+ 具体的文件内容
+*/
+struct FileTransInfo
+{
+    ULONGLONG m_uFileSize;      //文件总大小
+    ULONGLONG m_uRecvSize;      //文件已接收大小
+    string m_strFileDesc;       //文件描述
+    string m_strFileName;       //文件名
+
+    FileTransInfo()
+    {
+        m_uFileSize = 0;
+        m_uRecvSize = 0;
+    }
+};
+
 struct ClientInfo
 {
     string m_strUnique;

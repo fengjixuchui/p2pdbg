@@ -309,6 +309,9 @@ void CWorkLogic::OnSingleData(CDbgClient *ptr, const string &strData)
         {
             OnReply(ptr, strData);
         }
+        else if (strDataType == CMD_FILE_TRANSFER)
+        {
+        }
         //服务端转发数据
         else if (strDataType == CMD_C2S_TRANSDATA)
         {
