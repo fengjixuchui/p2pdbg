@@ -85,4 +85,21 @@
 }
 */
 #define CMD_REPLY   "reply"
+
+/**
+文件传输
+{
+    "dataType":"fileTransfer",
+    "id":112233,
+    "fileUnique":"文件标识",
+    "src":"文件发送方",
+    "dst":"文件接收方",
+    "desc":"文件描述",
+    "fileSize":112233,
+    "fileName":"文件名"
+}
+<File Start>
+具体的文件内容
+*/
+#define CMD_FILE_TRANSFER   "fileTransfer"
 #endif

@@ -14,7 +14,6 @@ using namespace Json;
 #define IP_SERV             "10.10.16.38"
 #define PORT_SERV           9971
 #define PORT_LOCAL          8807
-#define UNIQUE              "9ffab3fb-8621-4582-8937-44af8015a1d8"
 #define DBGDESC             "p2pdbg"
 
 struct ClientInfo
@@ -48,9 +47,13 @@ public:
     void StartWork();
     vector<ClientInfo> GetClientList();
     bool ConnectReomte(const string &strRemote);
+    bool IsConnectDbg();
+    ClientInfo GetDbgClient();
+    string GetDbgUnique();
+    wstring ExecCmd(const wstring &wstrCmd, int iTimeOut = -1);
 
 protected:
-    bool SendToDbgClient(const string &strData);
+    bool SendToDbgClient(Value &vData, string &strReply, int iTimeOut = -1);
     bool SendData(CDbgClient *remote, const string &strData);
     void GetJsonPack(Value &v, const string &strDataType);
     void SetServAddr(const string &strServIp, USHORT uServPort);
@@ -63,7 +66,7 @@ protected:
     void OnGetClientsInThread();
     void OnReply(CDbgClient *ptr, const string &strData);
     void OnTransData(CDbgClient *ptr, const string &strData);
-    bool SendForResult(CDbgClient *remote, Value &vRequest, string &strResult);
+    bool SendForResult(CDbgClient *remote, int id, Value &vRequest, string &strResult, int iTimeOut = -1);
     virtual void onRecvData(CDbgClient *ptr, const string &strData);
 
 protected:
@@ -76,6 +79,7 @@ protected:
     string m_strLocalIp;
     USHORT m_uLocalPort;
     string m_strServIp;
+    string m_strDevUnique;
     USHORT m_uServPort;
 
     CDbgClient m_c2serv;    //指向服务端

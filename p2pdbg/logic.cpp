@@ -1,5 +1,6 @@
 #include <WinSock2.h>
 #include <json/json.h>
+#include <gdcharconv.h>
 #include "logic.h"
 #include "cmddef.h"
 
@@ -23,10 +24,19 @@ void CWorkLogic::StartWork()
         return;
     }
     m_bInit = true;
+    srand(GetTickCount());
+    m_strDevUnique = fmt(
+        "%x%x%x%x%x%x%x%x-%x%x%x%x-%x%x%x%x-%x%x%x%x%x%x%x%x",
+        rand() % 0xf, rand() % 0xf, rand() % 0xf, rand() % 0xf, 
+        rand() % 0xf, rand() % 0xf, rand() % 0xf, rand() % 0xf,
+        rand() % 0xf, rand() % 0xf, rand() % 0xf, rand() % 0xf,
+        rand() % 0xf, rand() % 0xf, rand() % 0xf, rand() % 0xf,
+        rand() % 0xf, rand() % 0xf, rand() % 0xf, rand() % 0xf,
+        rand() % 0xf, rand() % 0xf, rand() % 0xf, rand() % 0xf
+        );
     m_uLocalPort = PORT_LOCAL;
     m_c2serv.InitClient(IP_SERV, PORT_SERV, 1, this);
     m_strLocalIp = m_c2serv.GetLocalIp();
-    RequestClientInternal();
     m_hWorkThread = CreateThread(NULL, 0, WorkThread, this, 0, NULL);
 }
 
@@ -54,9 +64,14 @@ CWorkLogic *CWorkLogic::GetInstance(){
 void CWorkLogic::GetJsonPack(Value &v, const string &strDataType)
 {
     static int gs_iSerial = 0;
-    v["unique"] = UNIQUE;
+    v["unique"] = m_strDevUnique;
     v["dataType"] = strDataType;
     v["id"] = gs_iSerial++;
+}
+
+string CWorkLogic::GetDbgUnique()
+{
+    return m_strDevUnique;
 }
 
 bool CWorkLogic::ConnectReomte(const string &strRemote)
@@ -96,6 +111,29 @@ bool CWorkLogic::ConnectReomte(const string &strRemote)
     return true;
 }
 
+bool CWorkLogic::IsConnectDbg()
+{
+    return m_bConnectSucc;
+}
+
+ClientInfo CWorkLogic::GetDbgClient()
+{
+    return m_DbgClient;
+}
+
+wstring CWorkLogic::ExecCmd(const wstring &wstrCmd, int iTimeOut)
+{
+    string strReply;
+    Value vRequest;
+    GetJsonPack(vRequest, CMD_C2C_RUNCMD);
+    vRequest["cmd"] = WtoU(wstrCmd);
+    SendToDbgClient(vRequest, strReply, iTimeOut);
+
+    Value vReply;
+    Reader().parse(strReply, vReply);
+    return UtoW(StyledWriter().write(vReply));
+}
+
 vector<ClientInfo> CWorkLogic::GetClientList()
 {
     CScopedLocker lock(&m_clientLock);
@@ -113,31 +151,31 @@ string CWorkLogic::RequestClientInternal()
     Value vJson;
     GetJsonPack(vJson, CMD_C2S_GETCLIENTS);
     string strResult;
-    SendForResult(&m_c2serv, vJson, strResult);
+    SendForResult(&m_c2serv, vJson.get("id", 0).asUInt(), vJson, strResult);
     return strResult;
 }
 
 //发送命令至被调试端
-bool CWorkLogic::SendToDbgClient(const string &strData)
+bool CWorkLogic::SendToDbgClient(Value &vData, string &strResult, int iTimeOut)
 {
+    int id = vData.get("id", 0).asUInt();
     //直接发给对端
     if (m_iDbgMode == 0)
     {
-        SendData(&m_c2client, strData);
+        return SendForResult(&m_c2client, id, vData, strResult, iTimeOut);
     }
     //通过服务端转发给对端
     else if (m_iDbgMode == 1)
     {
-        Value vContent;
-        Reader().parse(strData, vContent);
         Value vPacket;
         vPacket["dataType"] = CMD_C2S_TRANSDATA;
-        vPacket["src"] = UNIQUE;
+        vPacket["src"] = m_strDevUnique;
         vPacket["dst"] = m_DbgClient.m_strUnique;
-        vPacket["content"] = vContent;
-        SendData(&m_c2serv, FastWriter().write(vPacket));
+        vPacket["id"] = 0;
+        vPacket["content"] = vData;
+        return SendForResult(&m_c2serv, id, vPacket, strResult, iTimeOut);
     }
-    return true;
+    return false;
 }
 
 bool CWorkLogic::SendData(CDbgClient *remote, const string &strData)
@@ -148,26 +186,41 @@ bool CWorkLogic::SendData(CDbgClient *remote, const string &strData)
     return true;
 }
 
-bool CWorkLogic::SendForResult(CDbgClient *remote, Value &vRequest, string &strResult)
+bool CWorkLogic::SendForResult(CDbgClient *remote, int id, Value &vRequest, string &strResult, int iTimeOut)
 {
     HANDLE hNotify = CreateEventW(NULL, FALSE, FALSE, NULL);
     RequestInfo *pInfo = new RequestInfo();
     {
         CScopedLocker lock(&m_requsetLock);
-        pInfo->m_id = vRequest.get("id", 0).asUInt();
+        pInfo->m_id = id;
         pInfo->m_hNotify = hNotify;
         pInfo->m_pReply = &strResult;
         m_requestPool[pInfo->m_id] = pInfo;
         SendData(remote, FastWriter().write(vRequest));
     }
 
-    WaitForSingleObject(pInfo->m_hNotify, INFINITE);
+    DWORD dwResult = WaitForSingleObject(pInfo->m_hNotify, iTimeOut);
+    bool bResult = true;
+    if (WAIT_TIMEOUT == dwResult)
+    {
+        CScopedLocker lock(&m_requsetLock);
+        m_requestPool.erase(pInfo->m_id);
+        bResult = false;
+    }
     CloseHandle(hNotify);
+    delete pInfo;
 
-    Value vData;
-    Reader().parse(strResult, vData);
-    Value vContent = vData["content"];
-    strResult = FastWriter().write(vContent);
+    if (bResult)
+    {
+        Value vData;
+        Reader().parse(strResult, vData);
+        Value vContent = vData["content"];
+        strResult = FastWriter().write(vContent);
+    }
+    else
+    {
+        return "cmd timeout";
+    }
     return true;
 }
 
@@ -233,7 +286,8 @@ void CWorkLogic::OnTransData(CDbgClient *ptr, const string &strData)
         return;
     }
 
-    string strContent = vJson["content"].asString();
+    Value vContent = vJson["content"];
+    string strContent = FastWriter().write(vContent);
     OnSingleData(ptr, strContent);
 }
 
@@ -290,9 +344,9 @@ DWORD CWorkLogic::WorkThread(LPVOID pParam)
 {
     CWorkLogic *ptr = (CWorkLogic *)pParam;
     while (true) {
-        Sleep(1000);
         ptr->OnSendServHeartbeat();
         ptr->OnGetClientsInThread();
+        Sleep(1000);
     }
     return 0;
 }

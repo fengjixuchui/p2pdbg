@@ -1,12 +1,21 @@
+#include <WinSock2.h>
 #include <Windows.h>
 #include <CommCtrl.h>
+#include <string>
+#include <mstring.h>
+#include <gdcharconv.h>
 #include "dbgview.h"
 #include "common.h"
 #include "resource.h"
 #include "winsize.h"
 #include "clientview.h"
+#include "logic.h"
+
+using namespace std;
 
 #pragma comment(lib, "comctl32.lib")
+
+#define MSG_CONNECT_SUCC                        (WM_USER + 10011)
 
 #define POPU_MENU_ITEM_CONNECT                  (L"P2P连接   Ctrl+U")
 #define POPU_MENU_ITEM_CONNECT_ID               (WM_USER + 6050)
@@ -20,12 +29,30 @@
 #define POPU_MENU_ITEM_SETTING                  (L"设置规则  Ctrl+T")
 #define POPU_MENU_ITEM_SETTING_ID               (WM_USER + 6053)
 
+#define MSG_EXEC_COMMAND                        (WM_USER + 6061)
+
 extern HINSTANCE g_hInst;
 static HWND gs_hwnd = NULL;
 static HWND gs_hShow = NULL;
 static HWND gs_hStatus = NULL;
 static HWND gs_hEdtCmd = NULL;
 static HWND gs_hBtnRun = NULL;
+
+typedef LRESULT (CALLBACK *PWIN_PROC)(HWND, UINT, WPARAM, LPARAM);
+static PWIN_PROC gs_pfnCommandProc = NULL;
+
+static LRESULT CALLBACK _CommandProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
+{
+    if (WM_CHAR == msg)
+    {
+        if (0x0d == wp)
+        {
+            SendMessageW(gs_hwnd, MSG_EXEC_COMMAND, 0, 0);
+        }
+    }
+
+    return CallWindowProc(gs_pfnCommandProc, hwnd, msg, wp, lp);
+}
 
 static void _OnInitDlg(HWND hwnd, WPARAM wp, LPARAM lp)
 {
@@ -56,9 +83,19 @@ static void _OnInitDlg(HWND hwnd, WPARAM wp, LPARAM lp)
         {IDC_BTN_RUN, 0, 1, 1, 0, 0}
     };
     SetCtlsCoord(gs_hwnd, arry, RTL_NUMBER_OF(arry));
+    gs_pfnCommandProc = (PWIN_PROC)SetWindowLongPtr(gs_hEdtCmd, GWLP_WNDPROC, (LONG_PTR)_CommandProc);
+
+    SendMessageW(gs_hEdtCmd, EM_SETLIMITTEXT, 0, 0);
 }
 
-static void _OnSize(){
+static void _AppendText(const wstring &wstr)
+{
+    wstring wstrData = wstr;
+    wstrData += L"\r\n";
+    int iLength = GetWindowTextLengthW(gs_hShow);
+    SendMessageW(gs_hShow, EM_SETSEL, iLength, iLength);
+    SendMessageW(gs_hShow, EM_REPLACESEL, TRUE, (LPARAM)wstrData.c_str());
+    InvalidateRect(gs_hShow, NULL, TRUE);
 }
 
 static void _OnCommand(HWND hwnd, WPARAM wp, LPARAM lp)
@@ -78,9 +115,47 @@ static void _OnClose(HWND hwnd, WPARAM wp, LPARAM lp)
     EndDialog(gs_hwnd, 0);
 }
 
-static void _OnRButtonUp(HWND hwnd, WPARAM wp, LPARAM lp)
+static void _OnRunCommand(HWND hwnd, WPARAM wp, LPARAM lp)
 {
-    return;
+    if (!CWorkLogic::GetInstance()->IsConnectDbg())
+    {
+        _AppendText(L"尚未连接调试终端");
+        return;
+    }
+
+    WCHAR wszCommand[512] = {0};
+    GetWindowTextW(gs_hEdtCmd, wszCommand, 512);
+    ustring wstrCmd = wszCommand;
+    wstrCmd.trim();
+    SetWindowTextW(gs_hEdtCmd, L"");
+
+    if (wstrCmd.empty())
+    {
+        return;
+    }
+
+    wstring wstrShow = fmt(L"执行 %ls", wstrCmd.c_str());
+    _AppendText(wstrShow);
+    ustring wstrReply = CWorkLogic::GetInstance()->ExecCmd(wstrCmd);
+    wstrReply.repsub(L"\n", L"\r\n");
+    if (!wstrReply.empty())
+    {
+        _AppendText(wstrReply);
+    }
+}
+
+static void _OnConnectDbgSucc(HWND hwnd, WPARAM wp, LPARAM lp)
+{
+    ClientInfo CurDbg = CWorkLogic::GetInstance()->GetDbgClient();
+    ustring wstrTitle;
+    wstrTitle.format(
+        L"p2pdbg-%hs %hs:%d连接中...",
+        CurDbg.m_strClientDesc.c_str(),
+        CurDbg.m_strIpInternal.c_str(),
+        CurDbg.m_uPortInternal
+        );
+    SetWindowTextW(gs_hwnd, wstrTitle.c_str());
+    SendMessage(gs_hShow, WM_VSCROLL, SB_BOTTOM, 0);
 }
 
 static INT_PTR CALLBACK _DialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -93,11 +168,11 @@ static INT_PTR CALLBACK _DialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
     case  WM_COMMAND:
         _OnCommand(hwndDlg, wParam, lParam);
         break;
-    case WM_RBUTTONUP:
-        _OnRButtonUp(hwndDlg, wParam, lParam);
+    case MSG_CONNECT_SUCC:
+        _OnConnectDbgSucc(hwndDlg, wParam, lParam);
         break;
-    case WM_SIZE:
-        _OnSize();
+    case MSG_EXEC_COMMAND:
+        _OnRunCommand(hwndDlg, wParam, lParam);
         break;
     case  WM_CLOSE:
         _OnClose(hwndDlg, wParam, lParam);
@@ -106,6 +181,12 @@ static INT_PTR CALLBACK _DialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
     return 0;
 }
 
-void ShowDbgViw(){
+void NotifyConnectSucc()
+{
+    PostMessage(gs_hwnd, MSG_CONNECT_SUCC, 0, 0);
+}
+
+void ShowDbgViw()
+{
     DialogBoxW(g_hInst, MAKEINTRESOURCEW(IDD_DEBUG), NULL, _DialogProc);
 }

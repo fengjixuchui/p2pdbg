@@ -9,6 +9,7 @@
 #include "resource.h"
 #include "winsize.h"
 #include "logic.h"
+#include "dbgview.h"
 
 #pragma comment(lib, "comctl32.lib")
 #pragma comment(lib, "shlwapi.lib")
@@ -76,7 +77,7 @@ static void _OnInitDlg(HWND hwnd, WPARAM wp, LPARAM lp)
 {
     gs_hwnd = hwnd;
     gs_hList = GetDlgItem(gs_hwnd, IDC_SELECT_LIST);
-    CentreWindow(NULL, gs_hwnd);
+    CentreWindow(gs_hParent, gs_hwnd);
     _InitListCtrl();
     gs_hStatus = GetDlgItem(gs_hwnd, IDC_SELECT_STATUS);
     gs_hBtnConnent = GetDlgItem(gs_hwnd, IDC_SELECT_CONNECT);
@@ -88,7 +89,8 @@ static void _OnInitDlg(HWND hwnd, WPARAM wp, LPARAM lp)
     SetTimer(hwnd, TIMER_REFUSH_USERS, 1000, NULL);
 }
 
-static void _OnSize(){
+static void _OnSize()
+{
     _AdjustListctrlWidth();
 }
 
@@ -109,10 +111,18 @@ static void _OnCommand(HWND hwnd, WPARAM wp, LPARAM lp)
             return;
         }
         ClientInfo client = gs_vClients[pos];
+        if (client.m_strUnique == CWorkLogic::GetInstance()->GetDbgUnique())
+        {
+            SetWindowTextW(gs_hStatus, L"不能自己连接自己");
+            return;
+        }
+
         //连接对端
         if (CWorkLogic::GetInstance()->ConnectReomte(client.m_strUnique))
         {
             SetWindowTextW(gs_hStatus, L"连接对端成功");
+            NotifyConnectSucc();
+            EndDialog(gs_hwnd, 0);
         }
     }
 }
