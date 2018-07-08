@@ -10,7 +10,7 @@ class CDbgClient;
 class CDbgHandler
 {
 public:
-    virtual void onRecvData(CDbgClient *ptr, const string &strData) = 0;
+    virtual void onRecvData(const string &strData) = 0;
 };
 
 class CDbgClient

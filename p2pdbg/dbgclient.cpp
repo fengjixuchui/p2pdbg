@@ -27,7 +27,7 @@ DWORD CDbgClient::RecvThread(LPVOID pParam)
 
         if (ptr->m_handler)
         {
-            ptr->m_handler->onRecvData(ptr, string(buffer, size));
+            ptr->m_handler->onRecvData(string(buffer, size));
         }
     }
 

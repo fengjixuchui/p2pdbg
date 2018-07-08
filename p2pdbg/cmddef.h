@@ -5,8 +5,8 @@
  协议格式Json格式
  <Protocol Start>
  */
-#define CMD_START_MARK "<Protocol Start>"
-#define CMD_FILE_MARK  "<File Start>"
+#define CMD_START_MARK      "<Protocol Start>"
+#define CMD_FINISH_MARK     "<Protocol Finish>"
 
 /**终端到服务端指令**/
 /**
@@ -86,10 +86,21 @@
 */
 #define CMD_REPLY   "reply"
 
+/**文件传输协议**/
 /**
-文件传输
+文件传输用户注册
 {
-    "dataType":"fileTransfer",
+    "dataType":"ftpRegister",
+    "id":1111,
+    "unique":"设备标识"
+}
+*/
+#define CMD_FTP_REGISTER    "ftpRegister"
+
+/**
+<Protocol Start>
+{
+    "dataType":"ftpTransfer",
     "id":112233,
     "fileUnique":"文件标识",
     "src":"文件发送方",
@@ -98,8 +109,8 @@
     "fileSize":112233,
     "fileName":"文件名"
 }
-<File Start>
+<Protocol Finish>
 具体的文件内容
 */
-#define CMD_FILE_TRANSFER   "fileTransfer"
+#define CMD_FTP_TRANSFER   "ftpTransfer"
 #endif
