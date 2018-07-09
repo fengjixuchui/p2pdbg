@@ -3,4 +3,6 @@
 #include <Windows.h>
 
 VOID WINAPI CentreWindow(HWND hParent, HWND hChild);
+
+BOOL ReleaseResource(LPCWSTR wszDstPath, DWORD id, LPCWSTR wszType);
 #endif

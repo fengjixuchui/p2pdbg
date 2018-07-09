@@ -6,8 +6,11 @@
 #define IDD_SELECT                      102
 #define IDI_MAIN                        103
 #define IDR_MENU_MAIN                   104
+#define IDR_PEFILE                      105
+#define IDD_LOGVIEW                     106
 #define IDC_LIST1                       1001
 #define IDC_SELECT_LIST                 1001
+#define IDC_LOG_LIST                    1001
 #define IDC_DBG_CMD                     1003
 #define IDC_BTN_RUM                     1004
 #define IDC_BTN_RUN                     1004
@@ -15,8 +18,8 @@
 #define IDC_DBG_STATUS                  1007
 #define IDC_EDIT1                       1008
 #define IDC_SELECT_STATUS               1008
-#define IDC_EDT_CMD                     1008
 #define IDC_EDT_SHOW                    1008
+#define IDC_EDT_LOG_FILTER              1008
 #define IDC_SELECT_CONNECT              1009
 #define IDC_SELECT_REFUSH               1010
 #define ID_40001                        40001
@@ -36,7 +39,7 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        105
+#define _APS_NEXT_RESOURCE_VALUE        107
 #define _APS_NEXT_COMMAND_VALUE         40013
 #define _APS_NEXT_CONTROL_VALUE         1011
 #define _APS_NEXT_SYMED_VALUE           101

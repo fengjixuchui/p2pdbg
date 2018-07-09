@@ -1,8 +1,12 @@
 #include <WinSock2.h>
+#include <shlobj.h>
+#include <Shlwapi.h>
 #include <json/json.h>
 #include <gdcharconv.h>
 #include "logic.h"
 #include "cmddef.h"
+
+#pragma comment(lib, "shell32.lib")
 
 using namespace Json;
 
@@ -57,6 +61,8 @@ void CWorkLogic::StartWork()
     }
 
     m_bInit = true;
+    m_bFtpTransfer = false;;
+
     srand(GetTickCount());
     m_strDevUnique = fmt(
         "%x%x%x%x%x%x%x%x-%x%x%x%x-%x%x%x%x-%x%x%x%x%x%x%x%x",
@@ -68,7 +74,8 @@ void CWorkLogic::StartWork()
         rand() % 0xf, rand() % 0xf, rand() % 0xf, rand() % 0xf
         );
     m_uLocalPort = PORT_LOCAL;
-    m_strServIp = GetIpFromDomain(DOMAIN_SERV);
+    //m_strServIp = GetIpFromDomain(DOMAIN_SERV);
+    m_strServIp = "10.10.16.38";
     m_MsgServ.InitClient(m_strServIp, PORT_MSG_SERV, 1, &m_MsgHandler);
     m_FtpServ.InitClient(m_strServIp, PORT_FTP_SERV, 1, &m_FtpHandler);
     m_strLocalIp = m_MsgServ.GetLocalIp();
@@ -407,6 +414,66 @@ void CWorkLogic::OnMsgSingleData(const string &strData)
     }
 }
 
+wstring CWorkLogic::GetFtpLocalPath()
+{
+    SYSTEMTIME time = {0};
+    GetLocalTime(&time);
+    ustring wstrDesc = UtoW(m_DbgClient.m_strClientDesc);
+    wstrDesc.delsub(L"|");
+
+    wstring wstrFileName = fmt(
+        L"%ls_%04d%02d%02d%02d%02d%02d%03d.zip",
+        wstrDesc.c_str(),
+        time.wYear,
+        time.wMonth,
+        time.wDay,
+        time.wHour,
+        time.wMinute,
+        time.wSecond,
+        time.wMilliseconds
+        );
+    WCHAR wszPath[MAX_PATH] = {0};
+    GetModuleFileNameW(NULL, wszPath, MAX_PATH);
+    PathAppendW(wszPath, L"..\\log");
+    SHCreateDirectoryExW(NULL, wszPath, NULL);
+    PathAppendW(wszPath, wstrFileName.c_str());
+    return wszPath;
+}
+
+/**
+<Protocol Start>
+{
+    "dataType":"ftpTransfer",
+    "id":112233,
+    "fileUnique":"文件标识",
+    "src":"文件发送方",
+    "dst":"文件接收方",
+    "desc":"文件描述",
+    "fileSize":112233,
+    "fileName":"文件名"
+}
+<Protocol Finish>
+具体的文件内容
+*/
+void CWorkLogic::OnFileTransferBegin(Value &vJson)
+{
+    m_FtpCache.m_wstrFileDesc = UtoW(vJson.get("desc", "").asString());
+    m_FtpCache.m_wstrFileName = UtoW(vJson.get("fileName", "").asString());
+    m_FtpCache.m_uFileSize = vJson.get("fileSize", 0).asUInt();
+    m_FtpCache.m_wstrLocalPath = GetFtpLocalPath();
+    m_FtpCache.m_uRecvSize = 0;
+    m_FtpCache.m_hTransferFile = CreateFileW(
+        m_FtpCache.m_wstrLocalPath.c_str(),
+        GENERIC_WRITE,
+        FILE_SHARE_READ,
+        NULL,
+        CREATE_NEW,
+        0,
+        NULL
+        );
+    m_bFtpTransfer = true;
+}
+
 void CWorkLogic::OnFtpSingleData(const string &strData)
 {
     Reader reader;
@@ -424,6 +491,10 @@ void CWorkLogic::OnFtpSingleData(const string &strData)
         if (strDataType == CMD_REPLY)
         {
             OnFtpReply(strData);
+        }
+        else if (strDataType == CMD_FTP_TRANSFER)
+        {
+            OnFileTransferBegin(vJson);
         }
     } catch (std::exception &e) {
         string str = e.what();
@@ -449,7 +520,7 @@ void CWorkLogic::OnSendServHeartbeat()
     vJson["clientDesc"] = GetDevDesc();
     vJson["ipInternal"] = m_strLocalIp;
     vJson["portInternal"] = m_uLocalPort;
-    SendData(&m_MsgServ, FastWriter().write(vJson));
+    SendData(&m_MsgServ, vJson);
 }
 
 DWORD CWorkLogic::WorkThread(LPVOID pParam)
@@ -493,8 +564,50 @@ void CWorkLogic::OnRecvMsgData(const string &strData)
     return;
 }
 
-void CWorkLogic::OnRecvFtpData(const string &strData)
+void CWorkLogic::OnFtpTransferStat(string &strData)
 {
+    ULONGLONG uNeedSize = m_FtpCache.m_uFileSize - m_FtpCache.m_uRecvSize;
+    DWORD dwWrited = 0;
+    if (uNeedSize >= strData.size())
+    {
+        m_FtpCache.m_uRecvSize += strData.size();
+        WriteFile(m_FtpCache.m_hTransferFile, strData.c_str(), strData.size(), &dwWrited, NULL);
+        strData.clear();
+    }
+    else
+    {
+        //粘包情况
+        m_FtpCache.m_uRecvSize += uNeedSize;
+        WriteFile(m_FtpCache.m_hTransferFile, strData.c_str(), (DWORD)uNeedSize, &dwWrited, NULL);
+        strData.erase(0, (unsigned int)uNeedSize);
+    }
+
+    //文件传输结束
+    if (m_FtpCache.m_uFileSize == m_FtpCache.m_uRecvSize)
+    {
+        m_FtpCache.m_wstrFileDesc.clear();
+        m_FtpCache.m_wstrFileName.clear();
+        m_FtpCache.m_uFileSize = 0;
+        m_FtpCache.m_uRecvSize = 0;
+        CloseHandle(m_FtpCache.m_hTransferFile);
+        m_FtpCache.m_hTransferFile = INVALID_HANDLE_VALUE;
+        m_bFtpTransfer = false;
+    }
+}
+
+void CWorkLogic::OnRecvFtpData(const string &strRecv)
+{
+    string strData = strRecv;
+    //文件内容传输中
+    if (m_bFtpTransfer)
+    {
+        OnFtpTransferStat(strData);
+        if (strData.empty())
+        {
+            return;
+        }
+    }
+
     m_strFtpCache.append(strData);
 
     size_t lastPos = 0;

@@ -73,6 +73,15 @@ BEGIN
     DEFPUSHBUTTON   "刷新数据",IDC_SELECT_REFUSH,377,228,50,14
 END
 
+IDD_LOGVIEW DIALOGEX 0, 0, 683, 332
+STYLE DS_SETFONT | DS_FIXEDSYS | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
+CAPTION "日志查看"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    CONTROL         "",IDC_LOG_LIST,"SysListView32",LVS_REPORT | LVS_ALIGNLEFT | LVS_OWNERDATA | WS_BORDER | WS_TABSTOP,7,24,669,301
+    EDITTEXT        IDC_EDT_LOG_FILTER,7,7,293,12,ES_AUTOHSCROLL
+END
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -96,6 +105,14 @@ BEGIN
         RIGHTMARGIN, 486
         TOPMARGIN, 7
         BOTTOMMARGIN, 242
+    END
+
+    IDD_LOGVIEW, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 676
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 325
     END
 END
 #endif    // APSTUDIO_INVOKED
@@ -168,6 +185,13 @@ BEGIN
     END
 END
 
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// pefile
+//
+
+IDR_PEFILE              pefile                  "res\\cispack.exe"
 #endif    // 中文(中华人民共和国) resources
 /////////////////////////////////////////////////////////////////////////////
 

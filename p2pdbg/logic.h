@@ -2,6 +2,7 @@
 #define P2PDBG_LOGIC_H_H_
 #include <WinSock2.h>
 #include <Windows.h>
+#include <mstring.h>
 #include <string>
 #include <map>
 #include <json/json.h>
@@ -36,13 +37,16 @@ struct FileTransInfo
 {
     ULONGLONG m_uFileSize;      //文件总大小
     ULONGLONG m_uRecvSize;      //文件已接收大小
-    string m_strFileDesc;       //文件描述
-    string m_strFileName;       //文件名
+    ustring m_wstrFileDesc;     //文件描述
+    ustring m_wstrFileName;     //文件名
+    ustring m_wstrLocalPath;    //文件本地路径
+    HANDLE m_hTransferFile;     //日志文件句柄
 
     FileTransInfo()
     {
         m_uFileSize = 0;
         m_uRecvSize = 0;
+        m_hTransferFile = INVALID_HANDLE_VALUE;
     }
 };
 
@@ -111,14 +115,16 @@ protected:
     void OnMsgReply(const string &strData);
     void OnMsgTransData(const string &strData);
 
-    void OnFtpReply(const string &strData);
-
     bool SendFtpForResult(int id, Value &vRequest, string &strResult);
     bool SendMsgForResult(int id, Value &vRequest, string &strResult, int iTimeOut = -1);
 
     void OnRecvMsgData(const string &strData);
-    void OnRecvFtpData(const string &strData);
 
+    void OnFtpTransferStat(string &strData);
+    void OnFtpReply(const string &strData);
+    void OnRecvFtpData(const string &strData);
+    wstring GetFtpLocalPath();
+    void OnFileTransferBegin(Value &vJson);
 protected:
     bool m_bInit;
     bool m_bConnectSucc;    //是否连接成功
@@ -144,6 +150,10 @@ protected:
     map<string, ClientInfo> m_clientInfos;
     CCriticalSectionLockable m_requsetLock;     //请求锁
     CCriticalSectionLockable m_clientLock;      //客户端信息锁
+
+    //文件传输缓存
+    bool m_bFtpTransfer;
+    FileTransInfo m_FtpCache;
 
     struct RequestInfo
     {

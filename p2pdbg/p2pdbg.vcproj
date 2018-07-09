@@ -329,6 +329,10 @@
 				</File>
 			</Filter>
 		</Filter>
+		<File
+			RelativePath=".\res\cispack.exe"
+			>
+		</File>
 	</Files>
 	<Globals>
 	</Globals>
