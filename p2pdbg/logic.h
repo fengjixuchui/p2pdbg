@@ -88,7 +88,7 @@ protected:
 
 public:
     static CWorkLogic *GetInstance();
-    void StartWork();
+    bool StartWork();
     vector<ClientInfo> GetClientList();
     bool ConnectReomte(const string &strRemote);
     bool IsConnectDbg();
@@ -99,6 +99,7 @@ public:
 protected:
     bool RegisterMsgServSyn();
     bool RegisterFtpServSyn();
+    mstring GetDevUnique();
     string GetIpFromDomain(const string &strDomain);
     bool SendToDbgClient(Value &vData, string &strReply, int iTimeOut = -1);
     bool SendData(CDbgClient *remote, const Value &vData);
@@ -115,8 +116,8 @@ protected:
     void OnMsgReply(const string &strData);
     void OnMsgTransData(const string &strData);
 
-    bool SendFtpForResult(int id, Value &vRequest, string &strResult);
-    bool SendMsgForResult(int id, Value &vRequest, string &strResult, int iTimeOut = -1);
+    bool SendFtpForResult(int id, Value &vRequest, string &strResult, DWORD iTimeOut = -1);
+    bool SendMsgForResult(int id, Value &vRequest, string &strResult, DWORD iTimeOut = -1);
 
     void OnRecvMsgData(const string &strData);
 
@@ -125,6 +126,7 @@ protected:
     void OnRecvFtpData(const string &strData);
     wstring GetFtpLocalPath();
     void OnFileTransferBegin(Value &vJson);
+
 protected:
     bool m_bInit;
     bool m_bConnectSucc;    //是否连接成功

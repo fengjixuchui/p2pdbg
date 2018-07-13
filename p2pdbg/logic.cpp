@@ -5,6 +5,7 @@
 #include <gdcharconv.h>
 #include "logic.h"
 #include "cmddef.h"
+#include "dbgview.h"
 
 #pragma comment(lib, "shell32.lib")
 
@@ -39,8 +40,7 @@ bool CWorkLogic::RegisterMsgServSyn()
     vJson["portInternal"] = m_uLocalPort;
     int id = vJson["id"].asUInt();
     string strResult;
-    SendMsgForResult(id, vJson, strResult);
-    return true;
+    return SendMsgForResult(id, vJson, strResult, 5000);
 }
 
 bool CWorkLogic::RegisterFtpServSyn()
@@ -49,23 +49,21 @@ bool CWorkLogic::RegisterFtpServSyn()
     GetJsonPack(vJson, CMD_FTP_REGISTER);
     int id = vJson["id"].asUInt();
     string strResult;
-    SendFtpForResult(id, vJson, strResult);
-    return true;
+    return SendFtpForResult(id, vJson, strResult, 5000);
 }
 
-void CWorkLogic::StartWork()
-{
-    if (m_bInit)
+mstring CWorkLogic::GetDevUnique(){
+    char szBuffer[MAX_PATH] = {0};
+    DWORD dwSize = sizeof(szBuffer);
+    SHGetValueA(HKEY_LOCAL_MACHINE, "Software\\p2pdbg", "devUnique", NULL, szBuffer, &dwSize);
+
+    if (szBuffer[0])
     {
-        return;
+        return szBuffer;
     }
-
-    m_bInit = true;
-    m_bFtpTransfer = false;;
-
     srand(GetTickCount());
-    m_strDevUnique = fmt(
-        "%x%x%x%x%x%x%x%x-%x%x%x%x-%x%x%x%x-%x%x%x%x%x%x%x%x",
+    mstring strDevUnique = fmt(
+        L"%x%x%x%x%x%x%x%x-%x%x%x%x-%x%x%x%x-%x%x%x%x%x%x%x%x",
         rand() % 0xf, rand() % 0xf, rand() % 0xf, rand() % 0xf, 
         rand() % 0xf, rand() % 0xf, rand() % 0xf, rand() % 0xf,
         rand() % 0xf, rand() % 0xf, rand() % 0xf, rand() % 0xf,
@@ -73,15 +71,33 @@ void CWorkLogic::StartWork()
         rand() % 0xf, rand() % 0xf, rand() % 0xf, rand() % 0xf,
         rand() % 0xf, rand() % 0xf, rand() % 0xf, rand() % 0xf
         );
+    SHSetValueA(HKEY_LOCAL_MACHINE, "Software\\p2pdbg", "devUnique", REG_SZ, strDevUnique.c_str(), strDevUnique.size());
+    return strDevUnique;
+}
+
+bool CWorkLogic::StartWork()
+{
+    if (m_bInit)
+    {
+        return true;
+    }
+
+    m_bInit = true;
+    m_bFtpTransfer = false;;
+    m_strDevUnique = GetDevUnique();
     m_uLocalPort = PORT_LOCAL;
-    //m_strServIp = GetIpFromDomain(DOMAIN_SERV);
-    m_strServIp = "10.10.16.38";
+    m_strServIp = GetIpFromDomain(DOMAIN_SERV);
+    //m_strServIp = "10.10.16.38";
     m_MsgServ.InitClient(m_strServIp, PORT_MSG_SERV, 1, &m_MsgHandler);
     m_FtpServ.InitClient(m_strServIp, PORT_FTP_SERV, 1, &m_FtpHandler);
     m_strLocalIp = m_MsgServ.GetLocalIp();
-    RegisterMsgServSyn();
-    RegisterFtpServSyn();
+
+    if (!RegisterMsgServSyn() || !RegisterFtpServSyn())
+    {
+        return false;
+    }
     m_hWorkThread = CreateThread(NULL, 0, WorkThread, this, 0, NULL);
+    return true;
 }
 
 string CWorkLogic::GetDevDesc()
@@ -218,7 +234,7 @@ bool CWorkLogic::SendData(CDbgClient *remote, const Value &vData)
     return true;
 }
 
-bool CWorkLogic::SendFtpForResult(int id, Value &vRequest, string &strResult)
+bool CWorkLogic::SendFtpForResult(int id, Value &vRequest, string &strResult, DWORD dwTimeOut)
 {
     HANDLE hNotify = CreateEventW(NULL, FALSE, FALSE, NULL);
     RequestInfo *pInfo = new RequestInfo();
@@ -231,7 +247,7 @@ bool CWorkLogic::SendFtpForResult(int id, Value &vRequest, string &strResult)
         SendData(&m_FtpServ, vRequest);
     }
 
-    DWORD dwResult = WaitForSingleObject(pInfo->m_hNotify, INFINITE);
+    DWORD dwResult = WaitForSingleObject(pInfo->m_hNotify, dwTimeOut);
     bool bResult = true;
     if (WAIT_TIMEOUT == dwResult)
     {
@@ -256,7 +272,7 @@ bool CWorkLogic::SendFtpForResult(int id, Value &vRequest, string &strResult)
     return true;
 }
 
-bool CWorkLogic::SendMsgForResult(int id, Value &vRequest, string &strResult, int iTimeOut)
+bool CWorkLogic::SendMsgForResult(int id, Value &vRequest, string &strResult, DWORD iTimeOut)
 {
     HANDLE hNotify = CreateEventW(NULL, FALSE, FALSE, NULL);
     RequestInfo *pInfo = new RequestInfo();
@@ -592,6 +608,7 @@ void CWorkLogic::OnFtpTransferStat(string &strData)
         CloseHandle(m_FtpCache.m_hTransferFile);
         m_FtpCache.m_hTransferFile = INVALID_HANDLE_VALUE;
         m_bFtpTransfer = false;
+        NotifyLogFile(m_FtpCache.m_wstrLocalPath.c_str());
     }
 }
 

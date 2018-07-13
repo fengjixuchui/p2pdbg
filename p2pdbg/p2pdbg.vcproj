@@ -62,6 +62,7 @@
 			<Tool
 				Name="VCLinkerTool"
 				LinkIncremental="1"
+				UACExecutionLevel="2"
 				GenerateDebugInformation="true"
 				SubSystem="2"
 				TargetMachine="1"
@@ -135,6 +136,7 @@
 			<Tool
 				Name="VCLinkerTool"
 				LinkIncremental="1"
+				UACExecutionLevel="2"
 				GenerateDebugInformation="true"
 				SubSystem="2"
 				OptimizeReferences="2"
@@ -202,6 +204,14 @@
 			</File>
 			<File
 				RelativePath=".\logic.h"
+				>
+			</File>
+			<File
+				RelativePath=".\logview.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\logview.h"
 				>
 			</File>
 			<File

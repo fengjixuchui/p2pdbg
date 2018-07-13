@@ -10,12 +10,14 @@
 #include "winsize.h"
 #include "clientview.h"
 #include "logic.h"
+#include "logview.h"
 
 using namespace std;
 
 #pragma comment(lib, "comctl32.lib")
 
 #define MSG_CONNECT_SUCC                        (WM_USER + 10011)
+#define MSG_FTP_SUCC                            (WM_USER + 10023)
 
 #define POPU_MENU_ITEM_CONNECT                  (L"P2P连接   Ctrl+U")
 #define POPU_MENU_ITEM_CONNECT_ID               (WM_USER + 6050)
@@ -37,6 +39,7 @@ static HWND gs_hShow = NULL;
 static HWND gs_hStatus = NULL;
 static HWND gs_hEdtCmd = NULL;
 static HWND gs_hBtnRun = NULL;
+static HWND gs_hLabel = NULL;
 
 typedef LRESULT (CALLBACK *PWIN_PROC)(HWND, UINT, WPARAM, LPARAM);
 static PWIN_PROC gs_pfnCommandProc = NULL;
@@ -61,6 +64,9 @@ static void _OnInitDlg(HWND hwnd, WPARAM wp, LPARAM lp)
     gs_hShow = GetDlgItem(gs_hwnd, IDC_EDT_SHOW);
     gs_hStatus = GetDlgItem(gs_hwnd, IDC_DBG_STATUS);
     gs_hEdtCmd = GetDlgItem(gs_hwnd, IDC_DBG_CMD);
+    gs_hLabel = GetDlgItem(gs_hwnd, IDC_DBG_EDT_LABEL);
+
+    SetWindowTextW(gs_hLabel, L"调试命令>>");
 
     SetFocus(gs_hEdtCmd);
     SendMessageW(gs_hwnd, WM_SETICON, (WPARAM)TRUE, (LPARAM)LoadIconW(g_hInst, MAKEINTRESOURCEW(IDI_MAIN)));
@@ -80,7 +86,8 @@ static void _OnInitDlg(HWND hwnd, WPARAM wp, LPARAM lp)
         {0, gs_hShow, 0, 0, 1, 1},
         {0, gs_hStatus, 0, 1, f1, 0},
         {0, gs_hEdtCmd, f1, 1, f2, 0},
-        {IDC_BTN_RUN, 0, 1, 1, 0, 0}
+        {0, gs_hLabel, 0, 1, 0, 0},
+        {0, gs_hEdtCmd, 0, 1, 1, 0}
     };
     SetCtlsCoord(gs_hwnd, arry, RTL_NUMBER_OF(arry));
     gs_pfnCommandProc = (PWIN_PROC)SetWindowLongPtr(gs_hEdtCmd, GWLP_WNDPROC, (LONG_PTR)_CommandProc);
@@ -104,6 +111,9 @@ static void _OnCommand(HWND hwnd, WPARAM wp, LPARAM lp)
     switch (id) {
         case IDR_MENU_DEVICE:
             ShowClientView(gs_hwnd);
+            break;
+        case IDR_SUB_LOG:
+            ShowLogView(gs_hwnd);
             break;
         default:
             break;
@@ -136,12 +146,30 @@ static void _OnRunCommand(HWND hwnd, WPARAM wp, LPARAM lp)
 
     wstring wstrShow = fmt(L"执行 %ls", wstrCmd.c_str());
     _AppendText(wstrShow);
-    ustring wstrReply = CWorkLogic::GetInstance()->ExecCmd(wstrCmd);
-    wstrReply.repsub(L"\n", L"\r\n");
-    if (!wstrReply.empty())
+    ustring wstrReply = CWorkLogic::GetInstance()->ExecCmd(wstrCmd, 5000);
+
+    Value vResult;
+    Reader().parse(WtoU(wstrReply), vResult);
+
+    ustring wstrReplyShow;
+    if (vResult.type() == arrayValue)
     {
-        _AppendText(wstrReply);
+        for (int i = 0 ; i < (int)vResult.size() ; i++)
+        {
+            wstrReplyShow += UtoW(vResult[i].asString());
+            wstrReplyShow += L"\r\n";
+        }
+
+        if (wstrReplyShow.empty())
+        {
+            wstrReplyShow = L"没有任何数据";
+        }
     }
+    else
+    {
+        wstrReplyShow = L"等待超时";
+    }
+    _AppendText(wstrReplyShow);
 }
 
 static void _OnConnectDbgSucc(HWND hwnd, WPARAM wp, LPARAM lp)
@@ -158,6 +186,18 @@ static void _OnConnectDbgSucc(HWND hwnd, WPARAM wp, LPARAM lp)
     SendMessage(gs_hShow, WM_VSCROLL, SB_BOTTOM, 0);
 }
 
+static void _OnFtpSucc(HWND hwnd, WPARAM wp, LPARAM lp)
+{
+    int res = MessageBoxW(gs_hwnd, L"日志文件接收完成，是否加载查看?", L"日志数据", MB_OKCANCEL);
+    if (res == IDCANCEL)
+    {
+        return;
+    }
+
+    LoadLogData((LPCWSTR)wp);
+    ShowLogView(gs_hwnd);
+}
+
 static INT_PTR CALLBACK _DialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     switch (uMsg)
@@ -171,6 +211,9 @@ static INT_PTR CALLBACK _DialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
     case MSG_CONNECT_SUCC:
         _OnConnectDbgSucc(hwndDlg, wParam, lParam);
         break;
+    case MSG_FTP_SUCC:
+        _OnFtpSucc(hwndDlg, wParam, lParam);
+        break;
     case MSG_EXEC_COMMAND:
         _OnRunCommand(hwndDlg, wParam, lParam);
         break;
@@ -179,6 +222,13 @@ static INT_PTR CALLBACK _DialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
         break;
     }
     return 0;
+}
+
+void NotifyLogFile(LPCWSTR wszLogFile)
+{
+    static ustring s_wstrLogFile;
+    s_wstrLogFile = wszLogFile;
+    PostMessage(gs_hwnd, MSG_FTP_SUCC, (WPARAM)s_wstrLogFile.c_str(), 0);
 }
 
 void NotifyConnectSucc()

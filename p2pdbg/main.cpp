@@ -8,6 +8,7 @@
 #include "logic.h"
 #include "common.h"
 #include "resource.h"
+#include "logview.h"
 
 using namespace std;
 
@@ -31,6 +32,7 @@ ustring g_wstrCisPack;
 #define TEST_DOMAIN              "p2pdbg.picp.io"
 #define TEST_PORT_LOCAL          9977
 #define TEST_PORT_SERV           9971
+#define MUTEX_INSTANCE           L"89fbaf46-b1a0-42dd-b16a-c0f22222c3d1"
 
 static bool _InitDbgEnv()
 {
@@ -51,15 +53,34 @@ static bool _InitDbgEnv()
     return true;
 }
 
+static bool _IsProcRunning()
+{
+    HANDLE h = OpenMutexW(MUTEX_MODIFY_STATE, FALSE, MUTEX_INSTANCE);
+
+    CloseHandle(h);
+    return (h != NULL || (h == NULL && 5 == GetLastError()));
+}
+
 int WINAPI WinMain(HINSTANCE hT, HINSTANCE hP, LPSTR szCmdLine, int iShow)
 {
+    if (_IsProcRunning())
+    {
+        return 0;
+    }
+
+    CreateMutexW(NULL, FALSE, MUTEX_INSTANCE);
+    std::locale::global(std::locale(""));
     g_hInst = hT;
     _InitDbgEnv();
 
     WSADATA wsaData;
     WSAStartup( MAKEWORD(2, 2), &wsaData);
 
-    CWorkLogic::GetInstance()->StartWork();
+    if (!CWorkLogic::GetInstance()->StartWork())
+    {
+        MessageBoxW(NULL, L"³õÊ¼»¯µ÷ÊÔÆ÷Ê§°Ü", 0, 0);
+        return 0;
+    }
     ShowDbgViw();
     return 0;
 }

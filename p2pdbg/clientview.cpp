@@ -117,6 +117,12 @@ static void _OnCommand(HWND hwnd, WPARAM wp, LPARAM lp)
             return;
         }
 
+        if (client.m_strClientDesc.find("p2pdbg") != mstring::npos)
+        {
+            SetWindowTextW(gs_hStatus, L"对端不能是调试器");
+            return;
+        }
+
         //连接对端
         if (CWorkLogic::GetInstance()->ConnectReomte(client.m_strUnique))
         {
