@@ -3,7 +3,7 @@
 
 void NotifyConnectSucc();
 
-void NotifyLogFile(LPCWSTR wszLogFile);
+void NotifyLogFile(LPCWSTR wszDesc, LPCWSTR wszLogFile);
 
 void ShowDbgViw();
 #endif

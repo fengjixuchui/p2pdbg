@@ -267,9 +267,9 @@ bool CWorkLogic::SendFtpForResult(int id, Value &vRequest, string &strResult, DW
     }
     else
     {
-        return "cmd timeout";
+        strResult = "cmd timeout";
     }
-    return true;
+    return bResult;
 }
 
 bool CWorkLogic::SendMsgForResult(int id, Value &vRequest, string &strResult, DWORD iTimeOut)
@@ -305,9 +305,9 @@ bool CWorkLogic::SendMsgForResult(int id, Value &vRequest, string &strResult, DW
     }
     else
     {
-        return "cmd timeout";
+        strResult = "time out";
     }
-    return true;
+    return bResult;
 }
 
 /**
@@ -601,6 +601,7 @@ void CWorkLogic::OnFtpTransferStat(string &strData)
     //文件传输结束
     if (m_FtpCache.m_uFileSize == m_FtpCache.m_uRecvSize)
     {
+        NotifyLogFile(m_FtpCache.m_wstrFileDesc.c_str(), m_FtpCache.m_wstrLocalPath.c_str());
         m_FtpCache.m_wstrFileDesc.clear();
         m_FtpCache.m_wstrFileName.clear();
         m_FtpCache.m_uFileSize = 0;
@@ -608,7 +609,6 @@ void CWorkLogic::OnFtpTransferStat(string &strData)
         CloseHandle(m_FtpCache.m_hTransferFile);
         m_FtpCache.m_hTransferFile = INVALID_HANDLE_VALUE;
         m_bFtpTransfer = false;
-        NotifyLogFile(m_FtpCache.m_wstrLocalPath.c_str());
     }
 }
 

@@ -3,6 +3,7 @@
 #include <Shlwapi.h>
 #include <CommCtrl.h>
 #include <fstream>
+#include <list>
 #include <gdcharconv.h>
 #include <mstring.h>
 #include "clientview.h"
@@ -11,6 +12,7 @@
 #include "winsize.h"
 #include "logic.h"
 #include "dbgview.h"
+#include "fmtview.h"
 
 #pragma comment(lib, "comctl32.lib")
 #pragma comment(lib, "shlwapi.lib")
@@ -19,6 +21,11 @@ using namespace std;
 
 #define MSG_ACTIVITE    (WM_USER + 4011)
 #define MSG_SET_FILTER  (WM_USER + 5011)
+
+#define ID_MENU_SAVE    10011
+#define ID_MENU_COPY    10012
+#define ID_MUNU_FIND    10013
+#define ID_MENU_FORMAT  10014
 
 struct LogDataInfo
 {
@@ -139,9 +146,101 @@ static void _OnSize()
     _AdjustListctrlWidth();
 }
 
+static void _OnCopyData()
+{
+    list<int> vSelList;
+    int pos = -1;
+    while (TRUE)
+    {
+        pos = SendMessageW(gs_hList, LVM_GETNEXTITEM, pos, LVNI_SELECTED);
+        if (-1 == pos)
+        {
+            break;
+        }
+        vSelList.push_back(pos);
+    }
+
+    mstring strContent;
+    {
+        CScopedLocker lock(&gs_lock);
+        for (list<int>::const_iterator it = vSelList.begin() ; it != vSelList.end() ; it++)
+        {
+            if (strContent.size())
+            {
+                strContent += L"\r\n";
+            }
+            strContent += gs_LogInfo[*it]->m_wstrContent;
+        }
+    }
+
+    if (strContent.empty())
+    {
+        return;
+    }
+    HGLOBAL hBuffer = NULL;
+    do 
+    {
+        if (!OpenClipboard(NULL))
+        {
+            break;
+        }
+        EmptyClipboard();
+        hBuffer = GlobalAlloc(GMEM_MOVEABLE, strContent.size() + 16);
+        if (!hBuffer)
+        {
+            break;
+        }
+        LPSTR pBuffer = (LPSTR)GlobalLock(hBuffer);
+        if (!pBuffer)
+        {
+            break;
+        }
+        lstrcpynA(pBuffer, strContent.c_str(), strContent.size() + 16);
+        GlobalUnlock(hBuffer);
+        SetClipboardData(CF_TEXT, hBuffer);
+    } while (FALSE);
+    if (hBuffer)
+    {
+        GlobalFree(hBuffer);
+    }
+    CloseClipboard();
+    return;
+}
+
+static void _OnFormatData()
+{
+    int pos = SendMessageW(gs_hList, LVM_GETNEXTITEM, -1, LVNI_SELECTED);
+    if (-1 == pos)
+    {
+        return;
+    }
+
+    ustring wstr;
+    {
+        CScopedLocker lock(&gs_lock);
+        wstr = gs_ShowInfo[pos]->m_wstrContent;
+    }
+    ShowFmtView(gs_hwnd, wstr.c_str());
+}
+
 static void _OnCommand(HWND hwnd, WPARAM wp, LPARAM lp)
 {
     int id = LOWORD(wp);
+    switch (id) 
+    {
+    case ID_MENU_COPY:
+        _OnCopyData();
+        break;
+    case ID_MENU_SAVE:
+        break;
+    case ID_MENU_FORMAT:
+        _OnFormatData();
+        break;
+    case ID_MUNU_FIND:
+        break;
+    default:
+        break;
+    }
 }
 
 static VOID _OnGetListCtrlDisplsy(IN OUT NMLVDISPINFOW* ptr)
@@ -180,6 +279,18 @@ static VOID _OnGetListCtrlDisplsy(IN OUT NMLVDISPINFOW* ptr)
     } while (FALSE);
 }
 
+static void _OnRButtonUp(HWND hwnd, WPARAM wp, LPARAM lp)
+{
+    POINT pt = {0}; 
+    GetCursorPos(&pt);
+    HMENU menu = CreatePopupMenu();
+    AppendMenuW(menu, MF_ENABLED, ID_MUNU_FIND,     L"查找数据   CTRL+F");
+    AppendMenuW(menu, MF_ENABLED, ID_MENU_COPY,     L"复制数据   CTRL+L");
+    AppendMenuW(menu, MF_ENABLED, ID_MENU_FORMAT,   L"格式化查看 CTRL+U");
+    TrackPopupMenu(menu, TPM_CENTERALIGN, pt.x, pt.y, 0, gs_hwnd, 0);
+    DestroyMenu(menu);
+}
+
 static void _OnNotify(HWND hwnd, WPARAM wp, LPARAM lp)
 {
     switch (((LPNMHDR) lp)->code)
@@ -194,6 +305,9 @@ static void _OnNotify(HWND hwnd, WPARAM wp, LPARAM lp)
                 _OnGetListCtrlDisplsy(ptr);
             }
         }
+        break;
+    case NM_RCLICK:
+        _OnRButtonUp(hwnd, 0, 0);
         break;
     default:
         break;

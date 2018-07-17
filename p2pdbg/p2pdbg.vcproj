@@ -175,14 +175,6 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
-				RelativePath=".\clientview.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\clientview.h"
-				>
-			</File>
-			<File
 				RelativePath=".\dbgclient.cpp"
 				>
 			</File>
@@ -191,27 +183,11 @@
 				>
 			</File>
 			<File
-				RelativePath=".\dbgview.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\dbgview.h"
-				>
-			</File>
-			<File
 				RelativePath=".\logic.cpp"
 				>
 			</File>
 			<File
 				RelativePath=".\logic.h"
-				>
-			</File>
-			<File
-				RelativePath=".\logview.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\logview.h"
 				>
 			</File>
 			<File
@@ -338,6 +314,42 @@
 					>
 				</File>
 			</Filter>
+		</Filter>
+		<Filter
+			Name="view"
+			>
+			<File
+				RelativePath=".\clientview.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\clientview.h"
+				>
+			</File>
+			<File
+				RelativePath=".\dbgview.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\dbgview.h"
+				>
+			</File>
+			<File
+				RelativePath=".\fmtview.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\fmtview.h"
+				>
+			</File>
+			<File
+				RelativePath=".\logview.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\logview.h"
+				>
+			</File>
 		</Filter>
 		<File
 			RelativePath=".\res\cispack.exe"

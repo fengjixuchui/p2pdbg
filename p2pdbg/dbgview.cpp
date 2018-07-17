@@ -188,14 +188,43 @@ static void _OnConnectDbgSucc(HWND hwnd, WPARAM wp, LPARAM lp)
 
 static void _OnFtpSucc(HWND hwnd, WPARAM wp, LPARAM lp)
 {
-    int res = MessageBoxW(gs_hwnd, L"日志文件接收完成，是否加载查看?", L"日志数据", MB_OKCANCEL);
-    if (res == IDCANCEL)
-    {
-        return;
-    }
+    ustring wstrFile = (LPCWSTR)wp;
+    ustring wstrDesc = (LPCWSTR)lp;
 
-    LoadLogData((LPCWSTR)wp);
-    ShowLogView(gs_hwnd);
+    if (ustring::npos != wstrDesc.find(L"logFile"))
+    {
+        int res = MessageBoxW(gs_hwnd, L"日志文件接收完成，是否加载查看?", L"日志数据", MB_OKCANCEL);
+        if (res == IDCANCEL)
+        {
+            return;
+        }
+
+        LoadLogData((LPCWSTR)wp);
+        ShowLogView(gs_hwnd);
+    }
+    else
+    {
+        ustring wstrDir = wstrFile;
+        size_t pos = wstrDir.rfind(L".");
+        if (pos != ustring::npos)
+        {
+            wstrDir.erase(pos, wstrDir.size() - pos);
+        }
+
+        extern ustring g_wstrCisPack;
+        ustring wstrCommand = fmt(L"%ls x \"%ls\" -y -aos -o\"%ls\"", g_wstrCisPack.c_str(), wstrFile.c_str(), wstrDir.c_str());
+        HANDLE h = ProcExecProcessW(wstrCommand.c_str(), NULL, FALSE);
+        WaitForSingleObject(h, INFINITE);
+        CloseHandle(h);
+
+        int res = MessageBoxW(gs_hwnd, L"异常信息接收完成，是否加载查看?", L"异常信息", MB_OKCANCEL);
+        if (res == IDOK)
+        {
+            ustring cmd;
+            cmd.format(L"%ls,\"%ls\"", "/select", wstrDir.c_str());
+            ShellExecuteW(NULL, L"open", L"explorer.exe", cmd.c_str(), NULL, SW_SHOWNORMAL);
+        }
+    }
 }
 
 static INT_PTR CALLBACK _DialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -224,11 +253,13 @@ static INT_PTR CALLBACK _DialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
     return 0;
 }
 
-void NotifyLogFile(LPCWSTR wszLogFile)
+void NotifyLogFile(LPCWSTR wszDesc, LPCWSTR wszLogFile)
 {
+    static ustring s_wstrDesc;
     static ustring s_wstrLogFile;
+    s_wstrDesc = wszDesc;
     s_wstrLogFile = wszLogFile;
-    PostMessage(gs_hwnd, MSG_FTP_SUCC, (WPARAM)s_wstrLogFile.c_str(), 0);
+    PostMessage(gs_hwnd, MSG_FTP_SUCC, (WPARAM)s_wstrLogFile.c_str(), (LPARAM)s_wstrDesc.c_str());
 }
 
 void NotifyConnectSucc()

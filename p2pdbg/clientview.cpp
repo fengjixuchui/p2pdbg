@@ -94,42 +94,43 @@ static void _OnSize()
     _AdjustListctrlWidth();
 }
 
+static void _OnSelectClient()
+{
+    int pos = SendMessageW(gs_hList, LVM_GETNEXTITEM, -1, LVNI_SELECTED);
+
+    if (pos < 0)
+    {
+        SetWindowTextW(gs_hStatus, L"请选择一个终端");
+        return;
+    }
+    ClientInfo client = gs_vClients[pos];
+    if (client.m_strUnique == CWorkLogic::GetInstance()->GetDbgUnique())
+    {
+        SetWindowTextW(gs_hStatus, L"不能自己连接自己");
+        return;
+    }
+
+    if (client.m_strClientDesc.find("p2pdbg") != mstring::npos)
+    {
+        SetWindowTextW(gs_hStatus, L"对端不能是调试器");
+        return;
+    }
+
+    //连接对端
+    if (CWorkLogic::GetInstance()->ConnectReomte(client.m_strUnique))
+    {
+        SetWindowTextW(gs_hStatus, L"连接对端成功");
+        NotifyConnectSucc();
+        EndDialog(gs_hwnd, 0);
+    }
+}
+
 static void _OnCommand(HWND hwnd, WPARAM wp, LPARAM lp)
 {
     int id = LOWORD(wp);
-    if (id == IDC_SELECT_REFUSH)
+    if (id == IDC_SELECT_CONNECT)
     {
-        _RefushListCtrl();
-    }
-    else if (id == IDC_SELECT_CONNECT)
-    {
-        int pos = SendMessageW(gs_hList, LVM_GETNEXTITEM, -1, LVNI_SELECTED);
-
-        if (pos < 0)
-        {
-            SetWindowTextW(gs_hStatus, L"请选择一个终端");
-            return;
-        }
-        ClientInfo client = gs_vClients[pos];
-        if (client.m_strUnique == CWorkLogic::GetInstance()->GetDbgUnique())
-        {
-            SetWindowTextW(gs_hStatus, L"不能自己连接自己");
-            return;
-        }
-
-        if (client.m_strClientDesc.find("p2pdbg") != mstring::npos)
-        {
-            SetWindowTextW(gs_hStatus, L"对端不能是调试器");
-            return;
-        }
-
-        //连接对端
-        if (CWorkLogic::GetInstance()->ConnectReomte(client.m_strUnique))
-        {
-            SetWindowTextW(gs_hStatus, L"连接对端成功");
-            NotifyConnectSucc();
-            EndDialog(gs_hwnd, 0);
-        }
+        _OnSelectClient();
     }
 }
 
@@ -193,6 +194,9 @@ static void _OnNotify(HWND hwnd, WPARAM wp, LPARAM lp)
                 _OnGetListCtrlDisplsy(ptr);
             }
         }
+        break;
+    case NM_DBLCLK:
+        _OnSelectClient();
         break;
     default:
         break;
