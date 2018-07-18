@@ -8,7 +8,6 @@
 #define IDR_MENU_MAIN                   104
 #define IDR_PEFILE                      105
 #define IDD_LOGVIEW                     106
-#define IDD_DIALOG1                     107
 #define IDD_FORMAT                      107
 #define IDC_LIST1                       1001
 #define IDC_SELECT_LIST                 1001
@@ -23,6 +22,7 @@
 #define IDC_EDT_SHOW                    1008
 #define IDC_EDT_LOG_FILTER              1008
 #define IDC_EDT_FMT_JSON                1008
+#define IDC_EDIT_DBGCODE                1008
 #define IDC_SELECT_CONNECT              1009
 #define IDC_DBG_EDT_LABEL               1011
 #define IDC_EDT_LOG_STATUS              1013
