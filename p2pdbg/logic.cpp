@@ -473,9 +473,17 @@ wstring CWorkLogic::GetFtpLocalPath()
 */
 void CWorkLogic::OnFileTransferBegin(Value &vJson)
 {
+    int fileSize = vJson.get("fileSize", 0).asUInt();
+    ustring fileName = UtoW(vJson.get("fileName", "").asString());
+    if (fileSize <= 0)
+    {
+        NotifyMessage(L"接收到的文件大小为空");
+        return;
+    }
+
     m_FtpCache.m_wstrFileDesc = UtoW(vJson.get("desc", "").asString());
-    m_FtpCache.m_wstrFileName = UtoW(vJson.get("fileName", "").asString());
-    m_FtpCache.m_uFileSize = vJson.get("fileSize", 0).asUInt();
+    m_FtpCache.m_wstrFileName = fileName;
+    m_FtpCache.m_uFileSize = fileSize;
     m_FtpCache.m_wstrLocalPath = GetFtpLocalPath();
     m_FtpCache.m_uRecvSize = 0;
     m_FtpCache.m_hTransferFile = CreateFileW(
@@ -631,7 +639,7 @@ void CWorkLogic::OnRecvFtpData(const string &strRecv)
     size_t pos = m_strFtpCache.find(CMD_START_MARK);
     if (pos != 0)
     {
-        m_strMsgCache.clear();
+        m_strFtpCache.clear();
         return;
     }
 

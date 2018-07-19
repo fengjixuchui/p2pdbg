@@ -18,6 +18,7 @@ using namespace std;
 
 #define MSG_CONNECT_SUCC                        (WM_USER + 10011)
 #define MSG_FTP_SUCC                            (WM_USER + 10023)
+#define MSG_NOTIFYMSG                           (WM_USER + 10024)
 
 #define POPU_MENU_ITEM_CONNECT                  (L"P2P连接   Ctrl+U")
 #define POPU_MENU_ITEM_CONNECT_ID               (WM_USER + 6050)
@@ -227,6 +228,11 @@ static void _OnFtpSucc(HWND hwnd, WPARAM wp, LPARAM lp)
     }
 }
 
+static void _OnNotifyMsg(HWND hwnd, WPARAM wp, LPARAM lp)
+{
+    MessageBoxW(gs_hwnd, (LPCWSTR)wp, L"消息", 0);
+}
+
 static INT_PTR CALLBACK _DialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     switch (uMsg)
@@ -246,6 +252,9 @@ static INT_PTR CALLBACK _DialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
     case MSG_EXEC_COMMAND:
         _OnRunCommand(hwndDlg, wParam, lParam);
         break;
+    case MSG_NOTIFYMSG:
+        _OnNotifyMsg(hwndDlg, wParam, lParam);
+        break;
     case  WM_CLOSE:
         _OnClose(hwndDlg, wParam, lParam);
         break;
@@ -260,6 +269,13 @@ void NotifyLogFile(LPCWSTR wszDesc, LPCWSTR wszLogFile)
     s_wstrDesc = wszDesc;
     s_wstrLogFile = wszLogFile;
     PostMessage(gs_hwnd, MSG_FTP_SUCC, (WPARAM)s_wstrLogFile.c_str(), (LPARAM)s_wstrDesc.c_str());
+}
+
+void NotifyMessage(LPCWSTR wszMsg)
+{
+    static ustring s_wstrMessage;
+    s_wstrMessage = wszMsg;
+    PostMessage(gs_hwnd, MSG_NOTIFYMSG, (WPARAM)s_wstrMessage.c_str(), 0);
 }
 
 void NotifyConnectSucc()

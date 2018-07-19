@@ -5,5 +5,7 @@ void NotifyConnectSucc();
 
 void NotifyLogFile(LPCWSTR wszDesc, LPCWSTR wszLogFile);
 
+void NotifyMessage(LPCWSTR wszMsg);
+
 void ShowDbgViw();
 #endif
