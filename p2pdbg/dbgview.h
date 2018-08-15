@@ -3,7 +3,7 @@
 
 void NotifyConnectSucc();
 
-void NotifyLogFile(LPCWSTR wszDesc, LPCWSTR wszLogFile);
+void NotifyLogFile(LPCWSTR wszDesc, LPCWSTR wszLogFile, bool bCompress);
 
 void NotifyMessage(LPCWSTR wszMsg);
 

@@ -16,6 +16,12 @@ using namespace std;
 
 #pragma comment(lib, "comctl32.lib")
 
+struct FtpTransInfo {
+    wstring m_wstrDesc;
+    wstring m_wstrFilePath;
+    bool m_bCompress;
+};
+
 #define MSG_CONNECT_SUCC                        (WM_USER + 10011)
 #define MSG_FTP_SUCC                            (WM_USER + 10023)
 #define MSG_NOTIFYMSG                           (WM_USER + 10024)
@@ -94,6 +100,7 @@ static void _OnInitDlg(HWND hwnd, WPARAM wp, LPARAM lp)
     gs_pfnCommandProc = (PWIN_PROC)SetWindowLongPtr(gs_hEdtCmd, GWLP_WNDPROC, (LONG_PTR)_CommandProc);
 
     SendMessageW(gs_hEdtCmd, EM_SETLIMITTEXT, 0, 0);
+    SendMessageW(gs_hShow, EM_SETLIMITTEXT, 0, 0);
 }
 
 static void _AppendText(const wstring &wstr)
@@ -189,10 +196,9 @@ static void _OnConnectDbgSucc(HWND hwnd, WPARAM wp, LPARAM lp)
 
 static void _OnFtpSucc(HWND hwnd, WPARAM wp, LPARAM lp)
 {
-    ustring wstrFile = (LPCWSTR)wp;
-    ustring wstrDesc = (LPCWSTR)lp;
+    FtpTransInfo *pInfo = (FtpTransInfo *)wp;
 
-    if (ustring::npos != wstrDesc.find(L"logFile"))
+    if (ustring::npos != pInfo->m_wstrDesc.find(L"logFile"))
     {
         int res = MessageBoxW(gs_hwnd, L"日志文件接收完成，是否加载查看?", L"日志数据", MB_OKCANCEL);
         if (res == IDCANCEL)
@@ -200,29 +206,36 @@ static void _OnFtpSucc(HWND hwnd, WPARAM wp, LPARAM lp)
             return;
         }
 
-        LoadLogData((LPCWSTR)wp);
+        LoadLogData((LPCWSTR)pInfo->m_wstrFilePath.c_str());
         ShowLogView(gs_hwnd);
+        DeleteFileW(pInfo->m_wstrFilePath.c_str());
     }
     else
     {
-        ustring wstrDir = wstrFile;
-        size_t pos = wstrDir.rfind(L".");
-        if (pos != ustring::npos)
+        wstring wtrFilePath = pInfo->m_wstrFilePath;
+        if (pInfo->m_bCompress)
         {
-            wstrDir.erase(pos, wstrDir.size() - pos);
+            ustring wstrDir = pInfo->m_wstrFilePath;
+            size_t pos = wstrDir.rfind(L".");
+            if (pos != ustring::npos)
+            {
+                wstrDir.erase(pos, wstrDir.size() - pos);
+            }
+
+            extern ustring g_wstrCisPack;
+            ustring wstrCommand = fmt(L"%ls x \"%ls\" -y -aos -o\"%ls\"", g_wstrCisPack.c_str(), pInfo->m_wstrFilePath.c_str(), wstrDir.c_str());
+            HANDLE h = ProcExecProcessW(wstrCommand.c_str(), NULL, FALSE);
+            WaitForSingleObject(h, INFINITE);
+            CloseHandle(h);
+            DeleteFileW(pInfo->m_wstrFilePath.c_str());
+            wtrFilePath = wstrDir;
         }
 
-        extern ustring g_wstrCisPack;
-        ustring wstrCommand = fmt(L"%ls x \"%ls\" -y -aos -o\"%ls\"", g_wstrCisPack.c_str(), wstrFile.c_str(), wstrDir.c_str());
-        HANDLE h = ProcExecProcessW(wstrCommand.c_str(), NULL, FALSE);
-        WaitForSingleObject(h, INFINITE);
-        CloseHandle(h);
-
-        int res = MessageBoxW(gs_hwnd, L"异常信息接收完成，是否加载查看?", L"异常信息", MB_OKCANCEL);
+        int res = MessageBoxW(gs_hwnd, L"文件接收完成，是否加载查看?", pInfo->m_wstrDesc.c_str(), MB_OKCANCEL);
         if (res == IDOK)
         {
             ustring cmd;
-            cmd.format(L"%ls,\"%ls\"", "/select", wstrDir.c_str());
+            cmd.format(L"%ls,\"%ls\"", L"/select", wtrFilePath.c_str());
             ShellExecuteW(NULL, L"open", L"explorer.exe", cmd.c_str(), NULL, SW_SHOWNORMAL);
         }
     }
@@ -262,13 +275,13 @@ static INT_PTR CALLBACK _DialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
     return 0;
 }
 
-void NotifyLogFile(LPCWSTR wszDesc, LPCWSTR wszLogFile)
+void NotifyLogFile(LPCWSTR wszDesc, LPCWSTR wszLogFile, bool bCompress)
 {
-    static ustring s_wstrDesc;
-    static ustring s_wstrLogFile;
-    s_wstrDesc = wszDesc;
-    s_wstrLogFile = wszLogFile;
-    PostMessage(gs_hwnd, MSG_FTP_SUCC, (WPARAM)s_wstrLogFile.c_str(), (LPARAM)s_wstrDesc.c_str());
+    static FtpTransInfo s_ftpInfo;
+    s_ftpInfo.m_wstrDesc = wszDesc;
+    s_ftpInfo.m_wstrFilePath = wszLogFile;
+    s_ftpInfo.m_bCompress = bCompress;
+    PostMessage(gs_hwnd, MSG_FTP_SUCC, (WPARAM)&s_ftpInfo, 0);
 }
 
 void NotifyMessage(LPCWSTR wszMsg)

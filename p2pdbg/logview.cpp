@@ -491,6 +491,8 @@ bool LoadLogData(LPCWSTR wszZipFile)
     {
         wstrDir.erase(pos, wstrDir.size() - pos);
     }
+    wstrDir += L"_dir";
+
     ustring wstrCommand = fmt(L"%ls x \"%ls\" -y -aos -o\"%ls\"", g_wstrCisPack.c_str(), wszZipFile, wstrDir.c_str());
     HANDLE h = ProcExecProcessW(wstrCommand.c_str(), NULL, FALSE);
     WaitForSingleObject(h, INFINITE);

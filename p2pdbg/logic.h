@@ -41,9 +41,11 @@ struct FileTransInfo
     ustring m_wstrFileName;     //文件名
     ustring m_wstrLocalPath;    //文件本地路径
     HANDLE m_hTransferFile;     //日志文件句柄
+    bool m_bCompress;           //是否是压缩文件
 
     FileTransInfo()
     {
+        m_bCompress = true;
         m_uFileSize = 0;
         m_uRecvSize = 0;
         m_hTransferFile = INVALID_HANDLE_VALUE;
@@ -124,7 +126,7 @@ protected:
     void OnFtpTransferStat(string &strData);
     void OnFtpReply(const string &strData);
     void OnRecvFtpData(const string &strData);
-    wstring GetFtpLocalPath();
+    wstring GetFtpLocalPath(const ustring &wstrDesc, const ustring &wstrUnique, const ustring &wstrFileName);
     void OnFileTransferBegin(Value &vJson);
 
 protected:

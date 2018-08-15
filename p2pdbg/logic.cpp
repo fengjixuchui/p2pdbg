@@ -430,30 +430,30 @@ void CWorkLogic::OnMsgSingleData(const string &strData)
     }
 }
 
-wstring CWorkLogic::GetFtpLocalPath()
+wstring CWorkLogic::GetFtpLocalPath(const ustring &wstrDesc, const ustring &wstrUnique, const ustring &wstrFileName)
 {
+    //创建临时目录
+    WCHAR wszDir[MAX_PATH] = {0};
+    GetModuleFileNameW(NULL, wszDir, MAX_PATH);
+    PathAppendW(wszDir, L"..\\dbgcache");
+    PathAppendW(wszDir, wstrUnique.c_str());
+    SHCreateDirectoryExW(NULL, wszDir, NULL);
+
     SYSTEMTIME time = {0};
     GetLocalTime(&time);
-    ustring wstrDesc = UtoW(m_DbgClient.m_strClientDesc);
-    wstrDesc.delsub(L"|");
 
-    wstring wstrFileName = fmt(
-        L"%ls_%04d%02d%02d%02d%02d%02d%03d.zip",
-        wstrDesc.c_str(),
+    wstring wstrTmpFile = fmt(
+        L"%04d%02d%02d%02d%02d%02d_%ls",
         time.wYear,
         time.wMonth,
         time.wDay,
         time.wHour,
         time.wMinute,
         time.wSecond,
-        time.wMilliseconds
+        wstrFileName.c_str()
         );
-    WCHAR wszPath[MAX_PATH] = {0};
-    GetModuleFileNameW(NULL, wszPath, MAX_PATH);
-    PathAppendW(wszPath, L"..\\log");
-    SHCreateDirectoryExW(NULL, wszPath, NULL);
-    PathAppendW(wszPath, wstrFileName.c_str());
-    return wszPath;
+    PathAppendW(wszDir, wstrTmpFile.c_str());
+    return wszDir;
 }
 
 /**
@@ -483,9 +483,12 @@ void CWorkLogic::OnFileTransferBegin(Value &vJson)
 
     m_FtpCache.m_wstrFileDesc = UtoW(vJson.get("desc", "").asString());
     m_FtpCache.m_wstrFileName = fileName;
-    m_FtpCache.m_uFileSize = fileSize;
-    m_FtpCache.m_wstrLocalPath = GetFtpLocalPath();
+
+    ustring wstrSrc = UtoW(vJson.get("src", "asdf").asString());
+    m_FtpCache.m_wstrLocalPath = GetFtpLocalPath(m_FtpCache.m_wstrFileDesc.c_str(), wstrSrc, m_FtpCache.m_wstrFileName);
     m_FtpCache.m_uRecvSize = 0;
+    m_FtpCache.m_uFileSize = fileSize;
+    m_FtpCache.m_bCompress = (bool)(vJson.get("compress", true).asBool());
     m_FtpCache.m_hTransferFile = CreateFileW(
         m_FtpCache.m_wstrLocalPath.c_str(),
         GENERIC_WRITE,
@@ -609,7 +612,7 @@ void CWorkLogic::OnFtpTransferStat(string &strData)
     //文件传输结束
     if (m_FtpCache.m_uFileSize == m_FtpCache.m_uRecvSize)
     {
-        NotifyLogFile(m_FtpCache.m_wstrFileDesc.c_str(), m_FtpCache.m_wstrLocalPath.c_str());
+        NotifyLogFile(m_FtpCache.m_wstrFileDesc.c_str(), m_FtpCache.m_wstrLocalPath.c_str(), m_FtpCache.m_bCompress);
         m_FtpCache.m_wstrFileDesc.clear();
         m_FtpCache.m_wstrFileName.clear();
         m_FtpCache.m_uFileSize = 0;
