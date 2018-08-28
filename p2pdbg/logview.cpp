@@ -40,6 +40,7 @@ static HWND gs_hList = NULL;
 static HWND gs_hFilter = NULL;
 static HWND gs_hStatus = NULL;
 
+static ustring gs_wstrFilterStr;
 static vector<ustring> gs_vFilterSet;
 static vector<LogDataInfo *> gs_LogInfo;
 static vector<LogDataInfo *> gs_ShowInfo;
@@ -119,6 +120,8 @@ static void _OnInitDlg(HWND hwnd, WPARAM wp, LPARAM lp)
     gs_hFilter = GetDlgItem(gs_hwnd, IDC_EDT_LOG_FILTER);
     gs_hStatus = GetDlgItem(gs_hwnd, IDC_EDT_LOG_STATUS);
 
+    SetWindowTextW(gs_hFilter, gs_wstrFilterStr.c_str());
+
     CentreWindow(gs_hParent, gs_hwnd);
     _InitListCtrl();
 
@@ -169,7 +172,7 @@ static void _OnCopyData()
             {
                 strContent += L"\r\n";
             }
-            strContent += gs_LogInfo[*it]->m_wstrContent;
+            strContent += gs_ShowInfo[*it]->m_wstrContent;
         }
     }
 
@@ -327,6 +330,8 @@ static void _OnFilter(HWND hwnd, WPARAM wp, LPARAM lp)
     wstr.trim();
     size_t last = 0;
     size_t pos = 0;
+    wstr.trim();
+    gs_wstrFilterStr = wstr;
     gs_vFilterSet.clear();
     ustring wstrSub;
     while (pos = wstr.find(L";", last))

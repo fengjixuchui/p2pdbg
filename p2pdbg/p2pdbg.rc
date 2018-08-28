@@ -149,8 +149,8 @@ IDI_MAIN                ICON                    "res\\main.ico"
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,0,0,11
- PRODUCTVERSION 1,0,0,11
+ FILEVERSION 1,0,0,13
+ PRODUCTVERSION 1,0,0,13
  FILEFLAGSMASK 0x17L
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -166,12 +166,12 @@ BEGIN
         BLOCK "080404b0"
         BEGIN
             VALUE "FileDescription", "p2pdbg 应用程序"
-            VALUE "FileVersion", "1, 0, 0, 11"
+            VALUE "FileVersion", "1, 0, 0, 13"
             VALUE "InternalName", "p2pdbg"
             VALUE "LegalCopyright", "Copyright (C) 2018"
             VALUE "OriginalFilename", "p2pdbg.exe"
             VALUE "ProductName", "p2pdbg 应用程序"
-            VALUE "ProductVersion", "1, 0, 0, 11"
+            VALUE "ProductVersion", "1, 0, 0, 13"
         END
     END
     BLOCK "VarFileInfo"
