@@ -5,6 +5,7 @@
 #include <mstring.h>
 #include <string>
 #include <map>
+#include <list>
 #include <json/json.h>
 #include "dbgclient.h"
 #include "LockBase.h"
@@ -54,6 +55,7 @@ struct FileTransInfo
 
 struct ClientInfo
 {
+    string m_strStartTime;
     string m_strUnique;
     string m_strClientDesc;
 
@@ -91,12 +93,12 @@ protected:
 public:
     static CWorkLogic *GetInstance();
     bool StartWork();
-    vector<ClientInfo> GetClientList();
-    bool ConnectReomte(const string &strRemote);
+    vector<ClientInfo> GetClientSet();
+    bool ConnectDbgClient(const string &strRemote);
     bool IsConnectDbg();
     ClientInfo GetDbgClient();
     string GetDbgUnique();
-    wstring ExecCmd(const wstring &wstrCmd, int iTimeOut = -1);
+    list<ustring> ExecCmd(const ustring &wstrCmd, int iTimeOut = -1);
 
 protected:
     bool RegisterMsgServSyn();
@@ -114,7 +116,6 @@ protected:
     void OnFtpSingleData(const string &strData);
     static DWORD WINAPI WorkThread(LPVOID pParam);
     void OnSendServHeartbeat();
-    void OnGetClientsInThread();
     void OnMsgReply(const string &strData);
     void OnMsgTransData(const string &strData);
 

@@ -175,6 +175,10 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
+				RelativePath=".\cmdlancher.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\dbgclient.cpp"
 				>
 			</File>
@@ -202,6 +206,10 @@
 			>
 			<File
 				RelativePath=".\cmddef.h"
+				>
+			</File>
+			<File
+				RelativePath=".\cmdlancher.h"
 				>
 			</File>
 			<File

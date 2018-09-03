@@ -35,6 +35,22 @@
  */
 #define CMD_C2S_GETCLIENTS "getUserList_c2s"
 
+/**
+终端请求连接对端
+{
+    "dataType":"connectDbg_c2s",
+    "dst":"asdf"
+}
+
+返回值
+{
+    "stat":0,               //状态 0：成功 1：失败
+    "desc":"abcdef",        //错误描述信息
+    "cleintDesc":"xxx"      //调试终端描述
+}
+*/
+#define CMD_C2S_CONNECT "connectDbg_c2s"
+
 /**服务端到终端指令**/
 /**
  服务器转发其他用户数据

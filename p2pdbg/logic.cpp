@@ -134,22 +134,41 @@ string CWorkLogic::GetDbgUnique()
     return m_strDevUnique;
 }
 
-bool CWorkLogic::ConnectReomte(const string &strRemote)
+bool CWorkLogic::ConnectDbgClient(const string &strRemote)
 {
-    ClientInfo tmp;
-    {
-        CScopedLocker lock(&m_clientLock);
-        map<string, ClientInfo>::const_iterator it = m_clientInfos.find(strRemote);
-        if (it == m_clientInfos.end())
+    try {
+        Value vJson;
+        GetJsonPack(vJson, CMD_C2S_CONNECT);
+        vJson["dst"] = strRemote;
+        string strResult;
+        SendMsgForResult(vJson.get("id", 0).asUInt(), vJson, strResult, 50000);
+
+        /**
+        {
+            "stat":0,
+            "desc":"abcdef",
+            "clientDesc":"client desc"
+        }
+        */
+        Value vResult;
+        Reader().parse(strResult, vResult);
+        if (vResult.type() != objectValue)
         {
             return false;
         }
-        tmp = it->second;
-    }
 
-    m_bConnectSucc = true;
-    m_DbgClient = tmp;
-    return true;
+        if (vResult["stat"].asInt() != 0)
+        {
+            return false;
+        }
+        m_DbgClient.m_strUnique = strRemote;
+        m_DbgClient.m_strClientDesc = vResult["clientDesc"].asString();
+        m_bConnectSucc = true;
+        return true;
+    } catch (std::exception &e) {
+        MessageBoxA(0, e.what(), "error", 0);
+        return false;
+    }
 }
 
 bool CWorkLogic::IsConnectDbg()
@@ -162,7 +181,7 @@ ClientInfo CWorkLogic::GetDbgClient()
     return m_DbgClient;
 }
 
-wstring CWorkLogic::ExecCmd(const wstring &wstrCmd, int iTimeOut)
+list<ustring> CWorkLogic::ExecCmd(const ustring &wstrCmd, int iTimeOut)
 {
     string strReply;
     Value vRequest;
@@ -170,20 +189,27 @@ wstring CWorkLogic::ExecCmd(const wstring &wstrCmd, int iTimeOut)
     vRequest["cmd"] = WtoU(wstrCmd);
     SendToDbgClient(vRequest, strReply, iTimeOut);
 
-    Value vReply;
-    Reader().parse(strReply, vReply);
-    return UtoW(StyledWriter().write(vReply));
-}
+    Value vResult;
+    Reader().parse(strReply, vResult);
 
-vector<ClientInfo> CWorkLogic::GetClientList()
-{
-    CScopedLocker lock(&m_clientLock);
-    vector<ClientInfo> vResult;
-    for (map<string, ClientInfo>::const_iterator it = m_clientInfos.begin() ; it != m_clientInfos.end() ; it++)
+    list<ustring> result;
+    if (vResult.type() == arrayValue)
     {
-        vResult.push_back(it->second);
+        for (int i = 0 ; i < (int)vResult.size() ; i++)
+        {
+            result.push_back(UtoW(vResult[i].asString()));
+        }
+
+        if (result.empty())
+        {
+            result.push_back(L"没有任何数据");
+        }
     }
-    return vResult;
+    else
+    {
+        result.push_back(L"等待超时");
+    }
+    return result;
 }
 
 /**获取用户列表**/
@@ -313,12 +339,12 @@ bool CWorkLogic::SendMsgForResult(int id, Value &vRequest, string &strResult, DW
 /**
 服务端到终端请求用户列表回执
 */
-void CWorkLogic::OnGetClientsInThread()
+vector<ClientInfo> CWorkLogic::GetClientSet()
 {
     string strReply = RequestClientInternal();
 
     CScopedLocker lock(&m_clientLock);
-    m_clientInfos.clear();
+    vector<ClientInfo> result;
     Value vClients;
     Reader().parse(strReply, vClients);
     
@@ -327,13 +353,15 @@ void CWorkLogic::OnGetClientsInThread()
         Value vSingle = vClients[i];
         ClientInfo info;
         info.m_strUnique = vSingle["unique"].asString();
+        info.m_strStartTime = vSingle["startTime"].asString();
         info.m_strClientDesc = vSingle["clientDesc"].asString();
         info.m_strIpInternal = vSingle["ipInternal"].asString();
         info.m_uPortInternal = vSingle["portInternal"].asUInt();
         info.m_strIpExternal = vSingle["ipExternal"].asString();
         info.m_uPortExternal = vSingle["portExternal"].asUInt();
-        m_clientInfos[info.m_strUnique] = info;
+        result.push_back(info);
     }
+    return result;
 }
 
 void CWorkLogic::OnMsgReply(const string &strData)
@@ -556,7 +584,6 @@ DWORD CWorkLogic::WorkThread(LPVOID pParam)
     while (true)
     {
         ptr->OnSendServHeartbeat();
-        ptr->OnGetClientsInThread();
         Sleep(1000);
     }
     return 0;

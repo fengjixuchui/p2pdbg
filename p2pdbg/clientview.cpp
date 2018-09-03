@@ -61,7 +61,7 @@ static void _OnSelectClient()
 
     gs_wstrDbgCode = wstrCode;
     //Á¬½Ó¶Ô¶Ë
-    if (CWorkLogic::GetInstance()->ConnectReomte(WtoU(wstrCode)))
+    if (CWorkLogic::GetInstance()->ConnectDbgClient(WtoU(wstrCode)))
     {
         NotifyConnectSucc();
         EndDialog(gs_hwnd, 0);

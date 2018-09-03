@@ -2,6 +2,9 @@
 #include <Shlwapi.h>
 #include "common.h"
 
+#pragma comment(lib, "Psapi.lib")
+#pragma comment(lib, "Version.lib")
+
 VOID CentreWindow(HWND hParent, HWND hChild)
 {
     if (!hParent)
@@ -199,6 +202,67 @@ BOOL FileEnumFileW(LPCWSTR wszDir, BOOL bRecursion, pfnGdFileHandlerW handler, v
     } while (FindNextFileW(hFind, &findData));
 
     FindClose(hFind);
+
+    return bRet;
+}
+
+BOOL GetPeVersionW(LPCWSTR lpszFileName, LPWSTR outBuf, UINT size)
+{
+    WCHAR* szVersionBuffer = NULL;
+    BOOL bRet = FALSE;
+
+    do
+    {
+        if (!lpszFileName || !outBuf)
+        {
+            break;
+        }
+
+        DWORD dwVerSize;
+        DWORD dwHandle;
+
+        dwVerSize = GetFileVersionInfoSizeW(lpszFileName, &dwHandle);
+        if (!dwVerSize)
+        {
+            break;
+        }
+
+        szVersionBuffer = (WCHAR*)malloc(dwVerSize * sizeof(WCHAR));
+        if (!szVersionBuffer)
+        {
+            break;
+        }
+        RtlZeroMemory(szVersionBuffer, dwVerSize);
+
+        if (!GetFileVersionInfoW(lpszFileName, 0, dwVerSize, szVersionBuffer))
+        {
+            break;
+        }
+
+        VS_FIXEDFILEINFO* pInfo;
+        unsigned int nInfoLen;
+        if (!VerQueryValueW(szVersionBuffer, L"\\", (void**)&pInfo, &nInfoLen))
+        {
+            break;
+        }
+
+        wnsprintfW(
+            outBuf,
+            size,
+            L"%d.%d.%d.%d",
+            HIWORD(pInfo->dwFileVersionMS),
+            LOWORD(pInfo->dwFileVersionMS),
+            HIWORD(pInfo->dwFileVersionLS),
+            LOWORD(pInfo->dwFileVersionLS)
+            );
+
+        bRet = TRUE;
+    } while (FALSE);
+
+    if (szVersionBuffer)
+    {
+        free((void*)szVersionBuffer);
+    }
 
     return bRet;
 }

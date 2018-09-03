@@ -11,6 +11,7 @@
 #include "clientview.h"
 #include "logic.h"
 #include "logview.h"
+#include "cmdlancher.h"
 
 using namespace std;
 
@@ -64,6 +65,81 @@ static LRESULT CALLBACK _CommandProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
     return CallWindowProc(gs_pfnCommandProc, hwnd, msg, wp, lp);
 }
 
+static list<ustring> _CmdListClient(const ustring &wstrCmd, const ustring &wstrParam) {
+    list<ustring> result;
+    vector<ClientInfo> ClientSet = CWorkLogic::GetInstance()->GetClientSet();
+    for (vector<ClientInfo>::const_iterator it = ClientSet.begin() ; it != ClientSet.end() ; it++)
+    {
+        if (it->m_strClientDesc.find("p2pdbg") != mstring::npos)
+        {
+            continue;
+        }
+        ustring wstr = fmt(
+            L"设备标识:%hs 设备描述:%hs ip:%hs 连接时间:%hs",
+            it->m_strUnique.c_str(),
+            it->m_strClientDesc.c_str(),
+            it->m_strIpInternal.c_str(),
+            it->m_strStartTime.c_str()
+            );
+        result.push_back(wstr);
+    }
+    return result;
+}
+
+static list<ustring> _CmdListCmd(const ustring &wstrCmd, const ustring &wstrParam) {
+    list<ustring> result;
+    result.push_back("本地命令");
+    list<ustring> tmp = CCmdLancher::GetInstance()->GetLocalCmdList();
+    result.insert(result.end(), tmp.begin(), tmp.end());
+    result.push_back("调试端命令");
+    tmp = CCmdLancher::GetInstance()->GetRemoteCmdList();
+    result.insert(result.end(), tmp.begin(), tmp.end());
+    return result;
+}
+
+static list<ustring> _CmdClear(const ustring &wstrCmd, const ustring &wstrParam) {
+    list<ustring> result;
+    SetWindowTextW(gs_hShow, L"");
+    return result;
+}
+
+static list<ustring> _CmdConnectDbgClient(const ustring &wstrCmd, const ustring &wstrParam) {
+    list<ustring> result;
+    if (wstrParam.empty())
+    {
+        result.push_back(L"没有终端标识参数");
+        return result;
+    }
+
+    if (CWorkLogic::GetInstance()->ConnectDbgClient(WtoU(wstrParam)))
+    {
+        result.push_back(L"连接调试终端成功");
+        NotifyConnectSucc();
+    }
+    else
+    {
+        result.push_back(L"连接调试终端失败");
+    }
+    return result;
+}
+
+static void _InitLocalCmd() {
+    CCmdLancher::GetInstance()->RegisterCmd(L"clt", L"列出所有的调试终端", _CmdListClient);
+    CCmdLancher::GetInstance()->RegisterCmd(L"cls", L"清空调试页面", _CmdClear);
+    CCmdLancher::GetInstance()->RegisterCmd(L"cmd", L"支持的所有命令", _CmdListCmd);
+    CCmdLancher::GetInstance()->RegisterCmd(L"ct", L"连接调试终端", _CmdConnectDbgClient);
+}
+
+static void _AppendText(const wstring &wstr)
+{
+    wstring wstrData = wstr;
+    wstrData += L"\r\n";
+    int iLength = GetWindowTextLengthW(gs_hShow);
+    SendMessageW(gs_hShow, EM_SETSEL, iLength, iLength);
+    SendMessageW(gs_hShow, EM_REPLACESEL, TRUE, (LPARAM)wstrData.c_str());
+    InvalidateRect(gs_hShow, NULL, TRUE);
+}
+
 static void _OnInitDlg(HWND hwnd, WPARAM wp, LPARAM lp)
 {
     gs_hwnd = hwnd;
@@ -101,16 +177,14 @@ static void _OnInitDlg(HWND hwnd, WPARAM wp, LPARAM lp)
 
     SendMessageW(gs_hEdtCmd, EM_SETLIMITTEXT, 0, 0);
     SendMessageW(gs_hShow, EM_SETLIMITTEXT, 0, 0);
-}
 
-static void _AppendText(const wstring &wstr)
-{
-    wstring wstrData = wstr;
-    wstrData += L"\r\n";
-    int iLength = GetWindowTextLengthW(gs_hShow);
-    SendMessageW(gs_hShow, EM_SETSEL, iLength, iLength);
-    SendMessageW(gs_hShow, EM_REPLACESEL, TRUE, (LPARAM)wstrData.c_str());
-    InvalidateRect(gs_hShow, NULL, TRUE);
+    WCHAR wszPePath[256] = {0};
+    GetModuleFileNameW(NULL, wszPePath, 256);
+
+    WCHAR wszVersion[256] = {0};
+    GetPeVersionW(wszPePath, wszVersion, 256);
+    _AppendText(fmt(L"版本:%ls", wszVersion));
+    _InitLocalCmd();
 }
 
 static void _OnCommand(HWND hwnd, WPARAM wp, LPARAM lp)
@@ -135,12 +209,6 @@ static void _OnClose(HWND hwnd, WPARAM wp, LPARAM lp)
 
 static void _OnRunCommand(HWND hwnd, WPARAM wp, LPARAM lp)
 {
-    if (!CWorkLogic::GetInstance()->IsConnectDbg())
-    {
-        _AppendText(L"尚未连接调试终端");
-        return;
-    }
-
     WCHAR wszCommand[512] = {0};
     GetWindowTextW(gs_hEdtCmd, wszCommand, 512);
     ustring wstrCmd = wszCommand;
@@ -154,42 +222,26 @@ static void _OnRunCommand(HWND hwnd, WPARAM wp, LPARAM lp)
 
     wstring wstrShow = fmt(L"执行 %ls", wstrCmd.c_str());
     _AppendText(wstrShow);
-    ustring wstrReply = CWorkLogic::GetInstance()->ExecCmd(wstrCmd, 5000);
-
-    Value vResult;
-    Reader().parse(WtoU(wstrReply), vResult);
-
-    ustring wstrReplyShow;
-    if (vResult.type() == arrayValue)
+    list<ustring> result = CCmdLancher::GetInstance()->RunCmd(wszCommand);
+    ustring wstrShowStr;
+    for (list<ustring>::const_iterator it = result.begin() ; it != result.end() ; it++)
     {
-        for (int i = 0 ; i < (int)vResult.size() ; i++)
-        {
-            wstrReplyShow += UtoW(vResult[i].asString());
-            wstrReplyShow += L"\r\n";
-        }
+        wstrShowStr += it->c_str();
+        wstrShowStr += L"\r\n";
+    }
 
-        if (wstrReplyShow.empty())
-        {
-            wstrReplyShow = L"没有任何数据";
-        }
-    }
-    else
+    if (result.empty())
     {
-        wstrReplyShow = L"等待超时";
+        wstrShowStr += L"没有任何数据\r\n";
     }
-    _AppendText(wstrReplyShow);
+    _AppendText(wstrShowStr);
 }
 
 static void _OnConnectDbgSucc(HWND hwnd, WPARAM wp, LPARAM lp)
 {
     ClientInfo CurDbg = CWorkLogic::GetInstance()->GetDbgClient();
     ustring wstrTitle;
-    wstrTitle.format(
-        L"p2pdbg-%hs %hs:%d连接中...",
-        CurDbg.m_strClientDesc.c_str(),
-        CurDbg.m_strIpInternal.c_str(),
-        CurDbg.m_uPortInternal
-        );
+    wstrTitle.format(L"p2pdbg-%hs 连接中...", CurDbg.m_strClientDesc.c_str());
     SetWindowTextW(gs_hwnd, wstrTitle.c_str());
     SendMessage(gs_hShow, WM_VSCROLL, SB_BOTTOM, 0);
 }
