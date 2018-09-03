@@ -584,7 +584,7 @@ DWORD CWorkLogic::WorkThread(LPVOID pParam)
     while (true)
     {
         ptr->OnSendServHeartbeat();
-        Sleep(1000);
+        Sleep(1000 * 5);
     }
     return 0;
 }

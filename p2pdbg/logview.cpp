@@ -13,6 +13,7 @@
 #include "logic.h"
 #include "dbgview.h"
 #include "fmtview.h"
+#include "logview.h"
 
 #pragma comment(lib, "comctl32.lib")
 #pragma comment(lib, "shlwapi.lib")
@@ -394,6 +395,20 @@ static void _OnFilter(HWND hwnd, WPARAM wp, LPARAM lp)
     _UpdateStatus();
 }
 
+static void _OnDropFiles(HWND hwnd, WPARAM wp, LPARAM lp)
+{
+    WCHAR wszFile[MAX_PATH] = {0x00};
+    DragQueryFileW(HDROP(wp), 0, wszFile, MAX_PATH);
+    DragFinish(HDROP(wp));
+
+    if (!wszFile[0])
+    {
+        return;
+    }
+
+    LoadLogData(wszFile);
+}
+
 static INT_PTR CALLBACK _DialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     switch (uMsg)
@@ -403,6 +418,9 @@ static INT_PTR CALLBACK _DialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
         break;
     case  WM_COMMAND:
         _OnCommand(hwndDlg, wParam, lParam);
+        break;
+    case WM_DROPFILES:
+        _OnDropFiles(hwndDlg, wParam, lParam);
         break;
     case MSG_ACTIVITE:
         break;
@@ -482,30 +500,43 @@ static BOOL WINAPI _FileHandlerW(LPCWSTR wszFile, void *pParam)
 }
 
 //加载日志文件
-bool LoadLogData(LPCWSTR wszZipFile)
+bool LoadLogData(LPCWSTR wszFile)
 {
     extern ustring g_wstrCisPack;
-    if (INVALID_FILE_ATTRIBUTES == GetFileAttributesW(wszZipFile))
+    if (INVALID_FILE_ATTRIBUTES == GetFileAttributesW(wszFile))
     {
         return false;
     }
 
-    ustring wstrDir = wszZipFile;
-    size_t pos = wstrDir.rfind(L".");
-    if (pos != ustring::npos)
+    ustring wstrFile = wszFile;
+    ustring wstrDir;
+    _ReleaseCache();
+    if (FILE_ATTRIBUTE_DIRECTORY & GetFileAttributesW(wszFile))
     {
-        wstrDir.erase(pos, wstrDir.size() - pos);
+        wstrDir = wszFile;
+        //加载日志文件
+        FileEnumFileW(wstrDir.c_str(), TRUE, _FileHandlerW, NULL);
     }
-    wstrDir += L"_dir";
+    else if (wstrFile.endwith(L".zip"))
+    {
+        wstrDir = wszFile;
+        size_t pos = wstrDir.rfind(L".");
+        if (pos != ustring::npos)
+        {
+            wstrDir.erase(pos, wstrDir.size() - pos);
+        }
+        wstrDir += L"_dir";
 
-    ustring wstrCommand = fmt(L"%ls x \"%ls\" -y -aos -o\"%ls\"", g_wstrCisPack.c_str(), wszZipFile, wstrDir.c_str());
-    HANDLE h = ProcExecProcessW(wstrCommand.c_str(), NULL, FALSE);
-    WaitForSingleObject(h, INFINITE);
-    CloseHandle(h);
-
-   _ReleaseCache();
-    //加载日志文件
-    FileEnumFileW(wstrDir.c_str(), TRUE, _FileHandlerW, NULL);
+        ustring wstrCommand = fmt(L"%ls x \"%ls\" -y -aos -o\"%ls\"", g_wstrCisPack.c_str(), wszFile, wstrDir.c_str());
+        HANDLE h = ProcExecProcessW(wstrCommand.c_str(), NULL, FALSE);
+        WaitForSingleObject(h, INFINITE);
+        CloseHandle(h);
+        //加载日志文件
+        FileEnumFileW(wstrDir.c_str(), TRUE, _FileHandlerW, NULL);
+    }
+    else {
+        _LoadSingleFile(wszFile);
+    }
     _OnFilter(0, 0, 0);
     _RefushListCtrl();
     return true;
