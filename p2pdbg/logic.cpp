@@ -458,7 +458,7 @@ void CWorkLogic::OnMsgSingleData(const string &strData)
     }
 }
 
-wstring CWorkLogic::GetFtpLocalPath(const ustring &wstrDesc, const ustring &wstrUnique, const ustring &wstrFileName)
+wstring CWorkLogic::GetFtpLocalPath(const ustring &wstrDesc, const ustring &wstrUnique, const ustring &wstrFileName, bool bCompress)
 {
     //创建临时目录
     WCHAR wszDir[MAX_PATH] = {0};
@@ -470,7 +470,7 @@ wstring CWorkLogic::GetFtpLocalPath(const ustring &wstrDesc, const ustring &wstr
     SYSTEMTIME time = {0};
     GetLocalTime(&time);
 
-    wstring wstrTmpFile = fmt(
+    ustring wstrTmpFile = fmt(
         L"%04d%02d%02d%02d%02d%02d_%ls",
         time.wYear,
         time.wMonth,
@@ -480,6 +480,11 @@ wstring CWorkLogic::GetFtpLocalPath(const ustring &wstrDesc, const ustring &wstr
         time.wSecond,
         wstrFileName.c_str()
         );
+
+    if (bCompress && !wstrTmpFile.endwith(L".zip"))
+    {
+        wstrTmpFile += L".zip";
+    }
     PathAppendW(wszDir, wstrTmpFile.c_str());
     return wszDir;
 }
@@ -513,10 +518,10 @@ void CWorkLogic::OnFileTransferBegin(Value &vJson)
     m_FtpCache.m_wstrFileName = fileName;
 
     ustring wstrSrc = UtoW(vJson.get("src", "asdf").asString());
-    m_FtpCache.m_wstrLocalPath = GetFtpLocalPath(m_FtpCache.m_wstrFileDesc.c_str(), wstrSrc, m_FtpCache.m_wstrFileName);
+    m_FtpCache.m_bCompress = (bool)(vJson.get("compress", true).asBool());
+    m_FtpCache.m_wstrLocalPath = GetFtpLocalPath(m_FtpCache.m_wstrFileDesc.c_str(), wstrSrc, m_FtpCache.m_wstrFileName, m_FtpCache.m_bCompress);
     m_FtpCache.m_uRecvSize = 0;
     m_FtpCache.m_uFileSize = fileSize;
-    m_FtpCache.m_bCompress = (bool)(vJson.get("compress", true).asBool());
     m_FtpCache.m_hTransferFile = CreateFileW(
         m_FtpCache.m_wstrLocalPath.c_str(),
         GENERIC_WRITE,
@@ -639,13 +644,13 @@ void CWorkLogic::OnFtpTransferStat(string &strData)
     //文件传输结束
     if (m_FtpCache.m_uFileSize == m_FtpCache.m_uRecvSize)
     {
+        CloseHandle(m_FtpCache.m_hTransferFile);
+        m_FtpCache.m_hTransferFile = INVALID_HANDLE_VALUE;
         NotifyLogFile(m_FtpCache.m_wstrFileDesc.c_str(), m_FtpCache.m_wstrLocalPath.c_str(), m_FtpCache.m_bCompress);
         m_FtpCache.m_wstrFileDesc.clear();
         m_FtpCache.m_wstrFileName.clear();
         m_FtpCache.m_uFileSize = 0;
         m_FtpCache.m_uRecvSize = 0;
-        CloseHandle(m_FtpCache.m_hTransferFile);
-        m_FtpCache.m_hTransferFile = INVALID_HANDLE_VALUE;
         m_bFtpTransfer = false;
     }
 }

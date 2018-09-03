@@ -259,8 +259,8 @@ static void _OnFtpSucc(HWND hwnd, WPARAM wp, LPARAM lp)
         }
 
         LoadLogData((LPCWSTR)pInfo->m_wstrFilePath.c_str());
-        ShowLogView(gs_hwnd);
         DeleteFileW(pInfo->m_wstrFilePath.c_str());
+        ShowLogView(gs_hwnd);
     }
     else
     {

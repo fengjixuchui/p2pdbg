@@ -127,7 +127,7 @@ protected:
     void OnFtpTransferStat(string &strData);
     void OnFtpReply(const string &strData);
     void OnRecvFtpData(const string &strData);
-    wstring GetFtpLocalPath(const ustring &wstrDesc, const ustring &wstrUnique, const ustring &wstrFileName);
+    wstring GetFtpLocalPath(const ustring &wstrDesc, const ustring &wstrUnique, const ustring &wstrFileName, bool bCompress);
     void OnFileTransferBegin(Value &vJson);
 
 protected:
