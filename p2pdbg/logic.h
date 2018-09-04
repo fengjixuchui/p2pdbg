@@ -102,7 +102,6 @@ public:
 
 protected:
     bool RegisterMsgServSyn();
-    bool RegisterFtpServSyn();
     mstring GetDevUnique();
     string GetIpFromDomain(const string &strDomain);
     bool SendToDbgClient(Value &vData, string &strReply, int iTimeOut = -1);
@@ -123,7 +122,7 @@ protected:
     bool SendMsgForResult(int id, Value &vRequest, string &strResult, DWORD iTimeOut = -1);
 
     void OnRecvMsgData(const string &strData);
-
+    void OnFtpNotify(const string &strData);
     void OnFtpTransferStat(string &strData);
     void OnFtpReply(const string &strData);
     void OnRecvFtpData(const string &strData);

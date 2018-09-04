@@ -67,6 +67,15 @@
  */
 #define CMD_C2S_TRANSDATA "transdata_s2c"
 
+/**
+服务端通知终端有新的ftp文件
+{
+    "dataType":"ftpFileNotify_s2c",
+    "ftpUnique":"abcdef"                //ftp文件标识
+}
+*/
+#define CMD_C2S_FTPFILE_NOTIFY  "ftpFileNotify_s2c"
+
 /**终端到终端指令**/
 /**
  控制端请求执行命令
@@ -129,4 +138,14 @@
 具体的文件内容
 */
 #define CMD_FTP_TRANSFER   "ftpTransfer"
+
+/**
+调试端请求ftp文件
+{
+    "dataType":"ftpGetFile",
+    "id":1122323,
+    "ftpUnique":"abcdef"
+}
+*/
+#define CMD_FTP_GETFILE    "ftpGetFile"
 #endif

@@ -43,15 +43,6 @@ bool CWorkLogic::RegisterMsgServSyn()
     return SendMsgForResult(id, vJson, strResult, 5000);
 }
 
-bool CWorkLogic::RegisterFtpServSyn()
-{
-    Value vJson;
-    GetJsonPack(vJson, CMD_FTP_REGISTER);
-    int id = vJson["id"].asUInt();
-    string strResult;
-    return SendFtpForResult(id, vJson, strResult, 5000);
-}
-
 mstring CWorkLogic::GetDevUnique(){
     char szBuffer[MAX_PATH] = {0};
     DWORD dwSize = sizeof(szBuffer);
@@ -92,7 +83,7 @@ bool CWorkLogic::StartWork()
     m_FtpServ.InitClient(m_strServIp, PORT_FTP_SERV, 1, &m_FtpHandler);
     m_strLocalIp = m_MsgServ.GetLocalIp();
 
-    if (!RegisterMsgServSyn() || !RegisterFtpServSyn())
+    if (!RegisterMsgServSyn())
     {
         return false;
     }
@@ -262,6 +253,7 @@ bool CWorkLogic::SendData(CDbgClient *remote, const Value &vData)
 
 bool CWorkLogic::SendFtpForResult(int id, Value &vRequest, string &strResult, DWORD dwTimeOut)
 {
+    /**
     HANDLE hNotify = CreateEventW(NULL, FALSE, FALSE, NULL);
     RequestInfo *pInfo = new RequestInfo();
     {
@@ -296,6 +288,8 @@ bool CWorkLogic::SendFtpForResult(int id, Value &vRequest, string &strResult, DW
         strResult = "cmd timeout";
     }
     return bResult;
+    */
+    return true;
 }
 
 bool CWorkLogic::SendMsgForResult(int id, Value &vRequest, string &strResult, DWORD iTimeOut)
@@ -430,6 +424,31 @@ void CWorkLogic::OnMsgTransData(const string &strData)
     OnMsgSingleData(strContent);
 }
 
+void CWorkLogic::OnFtpNotify(const string &strData) {
+    /**
+    {
+        "dataType":"ftpFileNotify_s2c",
+        "ftpUnique":"abcdef"                //ftp文件标识
+    }
+    */
+    Value vJson;
+    Reader().parse(strData, vJson);
+    string strFtpUnique = vJson.get("ftpUnique", "").asString();
+
+    /**
+    先用现有的长连接请求，以后需要改成短连接
+    {
+        "dataType":"ftpGetFile",
+        "id":1122323,
+        "ftpUnique":"abcdef"
+    }
+    */
+    Value vFtpRequest;
+    vFtpRequest["ftpUnique"] = strFtpUnique;
+    GetJsonPack(vFtpRequest, CMD_FTP_GETFILE);
+    SendData(&m_FtpServ, vFtpRequest);
+}
+
 void CWorkLogic::OnMsgSingleData(const string &strData)
 {
     Reader reader;
@@ -447,6 +466,11 @@ void CWorkLogic::OnMsgSingleData(const string &strData)
         if (strDataType == CMD_REPLY)
         {
             OnMsgReply(strData);
+        }
+        //ftp通知
+        else if (strDataType == CMD_C2S_FTPFILE_NOTIFY)
+        {
+            OnFtpNotify(strData);
         }
         //服务端转发数据
         else if (strDataType == CMD_C2S_TRANSDATA)
