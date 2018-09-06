@@ -209,7 +209,7 @@ string CWorkLogic::RequestClientInternal()
     Value vJson;
     GetJsonPack(vJson, CMD_C2S_GETCLIENTS);
     string strResult;
-    SendMsgForResult(vJson.get("id", 0).asUInt(), vJson, strResult);
+    SendMsgForResult(vJson.get("id", 0).asUInt(), vJson, strResult, 3000);
     return strResult;
 }
 
@@ -253,42 +253,6 @@ bool CWorkLogic::SendData(CDbgClient *remote, const Value &vData)
 
 bool CWorkLogic::SendFtpForResult(int id, Value &vRequest, string &strResult, DWORD dwTimeOut)
 {
-    /**
-    HANDLE hNotify = CreateEventW(NULL, FALSE, FALSE, NULL);
-    RequestInfo *pInfo = new RequestInfo();
-    {
-        CScopedLocker lock(&m_requsetLock);
-        pInfo->m_id = id;
-        pInfo->m_hNotify = hNotify;
-        pInfo->m_pReply = &strResult;
-        m_FtpRequestPool[pInfo->m_id] = pInfo;
-        SendData(&m_FtpServ, vRequest);
-    }
-
-    DWORD dwResult = WaitForSingleObject(pInfo->m_hNotify, dwTimeOut);
-    bool bResult = true;
-    if (WAIT_TIMEOUT == dwResult)
-    {
-        CScopedLocker lock(&m_requsetLock);
-        m_FtpRequestPool.erase(pInfo->m_id);
-        bResult = false;
-    }
-    CloseHandle(hNotify);
-    delete pInfo;
-
-    if (bResult)
-    {
-        Value vData;
-        Reader().parse(strResult, vData);
-        Value vContent = vData["content"];
-        strResult = FastWriter().write(vContent);
-    }
-    else
-    {
-        strResult = "cmd timeout";
-    }
-    return bResult;
-    */
     return true;
 }
 

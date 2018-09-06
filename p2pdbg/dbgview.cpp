@@ -283,7 +283,7 @@ static void _OnFtpSucc(HWND hwnd, WPARAM wp, LPARAM lp)
             wtrFilePath = wstrDir;
         }
 
-        int res = MessageBoxW(gs_hwnd, L"文件接收完成，是否加载查看?", pInfo->m_wstrDesc.c_str(), MB_OKCANCEL);
+        int res = MessageBoxW(gs_hwnd, pInfo->m_wstrDesc.c_str(), L"文件接收完成", MB_OKCANCEL);
         if (res == IDOK)
         {
             ustring cmd;

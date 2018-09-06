@@ -19,6 +19,9 @@ public:
     CDbgClient();
     virtual ~CDbgClient();
 
+    /**
+    长连接模式
+    */
     bool InitClient(const string &strServIp, unsigned short uPort, int iTimeOut, CDbgHandler *handler);
     bool SendData(const string &strData);
     bool Close();

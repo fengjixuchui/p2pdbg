@@ -187,6 +187,14 @@
 				>
 			</File>
 			<File
+				RelativePath=".\fastclient.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\fastclient.h"
+				>
+			</File>
+			<File
 				RelativePath=".\logic.cpp"
 				>
 			</File>
