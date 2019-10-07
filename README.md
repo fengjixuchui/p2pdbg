@@ -1,4 +1,9 @@
 # p2pdbg-通用android app调试器
+本项目的源码：https://gitee.com/lougd/p2pdbg
+
+联系作者：qq:412776488 mail:lougdhr@126.com
+
+如果觉得这个项目对你有用，请点个star，感谢！
 
 #### 项目介绍
 为啥要做这个东东呢，是因为之前做了一个android项目，需要大量的适配和调试，但是需要调试手机又经常不在身边，自己恰好熟悉windows和服务器开发的知识，于是于个项目就诞生了。开发的过程中接口尽可能的保证了接口的通用性，所以这个调试器可以应用于所有的android项目。
@@ -8,7 +13,7 @@
 整个的调试过程仅仅依赖于网络，即仅需要运行windows调试器的pc能连接互联网并且被调试的android端能够访问互联网即可。
 
 运行在windows系统上的调试端截图
-![主界面截图](https://images.gitee.com/uploads/images/2019/1007/171542_59a65864_498054.png "1111.png")
+![输入图片说明](https://images.gitee.com/uploads/images/2019/1007/190146_1eb665b3_498054.png "1111.png")
 
 #### 软件架构
 
@@ -49,6 +54,9 @@ boolean initDbgServ(String strUnique, Context ctx)
 
 //开始连接调试服务器接口，用于连接位于公网的服务器
 boolean startDbgServ()
-```
 
+安卓端通过特定的方式（我们是暗码），调用startDbgServ之后就能在控制端通过clt命令看到android终端了。
+然后通过ct+终端标识码就能连接android端了，连接之后就能发送其注册的调试命令进行调试了。
+```
 #### 参与贡献
+有问题或者建议请告诉我，感谢！
