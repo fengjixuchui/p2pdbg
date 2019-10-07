@@ -2,8 +2,8 @@
 #define P2PDBG_CCMDLANCHER
 #include <Windows.h>
 #include <list>
-#include <mstring.h>
-#include <LockBase.h>
+#include "../ComLib/mstring.h"
+#include "../ComLib/LockBase.h"
 
 using namespace std;
 

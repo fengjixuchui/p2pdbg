@@ -1,0 +1,57 @@
+//apply plugin: 'com.android.application'
+apply plugin: 'com.android.library'
+
+android {
+    compileSdkVersion 28
+    defaultConfig {
+        //applicationId "com.example.administrator.dbglibrary"
+        minSdkVersion 15
+        targetSdkVersion 23
+        versionCode 9
+        versionName "9"
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+
+        ndk {
+            // 设置支持的SO库架构
+            abiFilters 'armeabi', 'x86', 'armeabi-v7a', 'x86_64', 'arm64-v8a'
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    /**
+     * 编译时生成自定义格式的apk文件名 lougd
+     */
+    android.libraryVariants.all { variant ->
+        variant.outputs.all {
+            /**
+             def fileName
+             def date = new Date()
+             def formattedDate = date.format('yyyyMMddHHmmss')
+             if (variant.buildType.name.equals('release')) {fileName = "${variant.mergedFlavor.versionName}_release_${formattedDate}.apk"} else if (variant.buildType.name.equals('debug')) {fileName = "${variant.mergedFlavor.versionName}_debug_${formattedDate}.apk"}outputFileName = fileName;
+             */
+            outputFileName = "DbgLib.aar"
+        }
+    }
+
+    sourceSets {
+        main {
+            jniLibs.srcDirs = ['libs']
+        }
+    }
+}
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation 'com.android.support:appcompat-v7:28.0.0-alpha3'
+    implementation 'com.android.support.constraint:constraint-layout:1.1.2'
+    testImplementation 'junit:junit:4.12'
+    androidTestImplementation 'com.android.support.test:runner:1.0.2'
+    androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
+    implementation 'com.android.support:recyclerview-v7:28.0.0-alpha3'
+    implementation 'com.android.support:design:28.0.0-alpha3'
+}

@@ -2,13 +2,13 @@
 #define P2PDBG_LOGIC_H_H_
 #include <WinSock2.h>
 #include <Windows.h>
-#include <mstring.h>
+#include "../ComLib/mstring.h"
 #include <string>
 #include <map>
 #include <list>
-#include <json/json.h>
+#include "../ComLib/json/json.h"
 #include "dbgclient.h"
-#include "LockBase.h"
+#include "../ComLib/LockBase.h"
 
 using namespace std;
 using namespace Json;

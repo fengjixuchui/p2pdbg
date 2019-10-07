@@ -2,12 +2,12 @@
 #include <Windows.h>
 #include <Shlwapi.h>
 #include <CommCtrl.h>
-#include <gdcharconv.h>
-#include <mstring.h>
+#include "../ComLib/StrUtil.h"
+#include "../ComLib/mstring.h"
 #include "clientview.h"
-#include "common.h"
+#include "../ComLib/common.h"
 #include "resource.h"
-#include "winsize.h"
+#include "../ComLib/winsize.h"
 #include "logic.h"
 #include "dbgview.h"
 

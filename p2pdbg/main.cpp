@@ -2,11 +2,11 @@
 #include <Windows.h>
 #include <ShlObj.h>
 #include <Shlwapi.h>
-#include <mstring.h>
-#include <gdcharconv.h>
+#include "../ComLib/mstring.h"
+#include "../ComLib/StrUtil.h"
+#include "../ComLib/common.h"
 #include "dbgview.h"
 #include "logic.h"
-#include "common.h"
 #include "resource.h"
 #include "logview.h"
 

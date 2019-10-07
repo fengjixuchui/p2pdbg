@@ -2,12 +2,12 @@
 #include <Windows.h>
 #include <CommCtrl.h>
 #include <string>
-#include <mstring.h>
-#include <gdcharconv.h>
+#include "../ComLib/mstring.h"
+#include "../ComLib/StrUtil.h"
+#include "../ComLib/common.h"
+#include "../ComLib/winsize.h"
 #include "dbgview.h"
-#include "common.h"
 #include "resource.h"
-#include "winsize.h"
 #include "clientview.h"
 #include "logic.h"
 #include "logview.h"
@@ -74,7 +74,7 @@ static list<ustring> _CmdListClient(const ustring &wstrCmd, const ustring &wstrP
         {
             continue;
         }
-        ustring wstr = fmt(
+        ustring wstr = FormatW(
             L"设备标识:%hs 设备描述:%hs ip:%hs 连接时间:%hs",
             it->m_strUnique.c_str(),
             it->m_strClientDesc.c_str(),
@@ -183,7 +183,7 @@ static void _OnInitDlg(HWND hwnd, WPARAM wp, LPARAM lp)
 
     WCHAR wszVersion[256] = {0};
     GetPeVersionW(wszPePath, wszVersion, 256);
-    _AppendText(fmt(L"版本:%ls", wszVersion));
+    _AppendText(FormatW(L"版本:%ls", wszVersion));
     _InitLocalCmd();
 }
 
@@ -220,7 +220,7 @@ static void _OnRunCommand(HWND hwnd, WPARAM wp, LPARAM lp)
         return;
     }
 
-    wstring wstrShow = fmt(L"执行 %ls", wstrCmd.c_str());
+    wstring wstrShow = FormatW(L"执行 %ls", wstrCmd.c_str());
     _AppendText(wstrShow);
     list<ustring> result = CCmdLancher::GetInstance()->RunCmd(wszCommand);
     ustring wstrShowStr;
@@ -275,7 +275,7 @@ static void _OnFtpSucc(HWND hwnd, WPARAM wp, LPARAM lp)
             }
 
             extern ustring g_wstrCisPack;
-            ustring wstrCommand = fmt(L"%ls x \"%ls\" -y -aos -o\"%ls\"", g_wstrCisPack.c_str(), pInfo->m_wstrFilePath.c_str(), wstrDir.c_str());
+            ustring wstrCommand = FormatW(L"%ls x \"%ls\" -y -aos -o\"%ls\"", g_wstrCisPack.c_str(), pInfo->m_wstrFilePath.c_str(), wstrDir.c_str());
             HANDLE h = ProcExecProcessW(wstrCommand.c_str(), NULL, FALSE);
             WaitForSingleObject(h, INFINITE);
             CloseHandle(h);

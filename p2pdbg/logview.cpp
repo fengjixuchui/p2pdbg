@@ -4,12 +4,12 @@
 #include <CommCtrl.h>
 #include <fstream>
 #include <list>
-#include <gdcharconv.h>
-#include <mstring.h>
+#include "../ComLib/StrUtil.h"
+#include "../ComLib/mstring.h"
 #include "clientview.h"
-#include "common.h"
+#include "../ComLib/common.h"
 #include "resource.h"
-#include "winsize.h"
+#include "../ComLib/winsize.h"
 #include "logic.h"
 #include "dbgview.h"
 #include "fmtview.h"
@@ -99,7 +99,7 @@ static void _UpdateStatus()
 {
     SYSTEMTIME time = {0};
     GetLocalTime(&time);
-    ustring wstrTime = fmt(
+    ustring wstrTime = FormatW(
         L"%04d-%02d-%02d %02d:%02d:%02d %03d",
         time.wYear,
         time.wMonth,
@@ -110,7 +110,7 @@ static void _UpdateStatus()
         time.wMilliseconds
         );
 
-    ustring wstrShow = fmt(L"加载时间:%ls 数据数量:%d 符合规则:%d", wstrTime.c_str(), gs_LogInfo.size(), gs_ShowInfo.size());
+    ustring wstrShow = FormatW(L"加载时间:%ls 数据数量:%d 符合规则:%d", wstrTime.c_str(), gs_LogInfo.size(), gs_ShowInfo.size());
     SetWindowTextW(gs_hStatus, wstrShow.c_str());
 }
 
@@ -445,7 +445,7 @@ static ustring _GetTimeFromStr(ustring &wstr)
 {
     SYSTEMTIME time = {0};
     GetLocalTime(&time);
-    ustring wstrYear = fmt(L"%d", time.wYear);
+    ustring wstrYear = FormatW(L"%d", time.wYear);
     size_t iStartPos = wstr.find(wstrYear);
     size_t iEndPos = wstr.find_in_range(L" ", iStartPos, 32);
     if (iEndPos != ustring::npos)
@@ -527,7 +527,7 @@ bool LoadLogData(LPCWSTR wszFile)
         }
         wstrDir += L"_dir";
 
-        ustring wstrCommand = fmt(L"%ls x \"%ls\" -y -aos -o\"%ls\"", g_wstrCisPack.c_str(), wszFile, wstrDir.c_str());
+        ustring wstrCommand = FormatW(L"%ls x \"%ls\" -y -aos -o\"%ls\"", g_wstrCisPack.c_str(), wszFile, wstrDir.c_str());
         HANDLE h = ProcExecProcessW(wstrCommand.c_str(), NULL, FALSE);
         WaitForSingleObject(h, INFINITE);
         CloseHandle(h);

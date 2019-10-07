@@ -1,6 +1,6 @@
 #include <WinSock2.h>
 #include <Windows.h>
-#include <gdcharconv.h>
+#include "../ComLib/StrUtil.h"
 #include "cmdlancher.h"
 #include "logic.h"
 
@@ -21,7 +21,7 @@ list<ustring> CCmdLancher::GetLocalCmdList()
     for (list<CmdLocalInfo *>::const_iterator it = m_cmdList.begin() ; it != m_cmdList.end() ; it++)
     {
         CmdLocalInfo *ptr = *it;
-        result.push_back(fmt(L"命令:%ls 描述:%ls", ptr->m_wstrCmd.c_str(), ptr->m_wstrDesc.c_str()));
+        result.push_back(FormatW(L"命令:%ls 描述:%ls", ptr->m_wstrCmd.c_str(), ptr->m_wstrDesc.c_str()));
     }
     return result;
 }
@@ -70,7 +70,7 @@ list<ustring> CCmdLancher::RunCmd(const ustring &wstrCmd)
     {
         if (!pLocalCmd)
         {
-            result.push_back(fmt(L"不支持的命令:%ls", wstr1.c_str()));
+            result.push_back(FormatW(L"不支持的命令:%ls", wstr1.c_str()));
         }
         return result;
     }

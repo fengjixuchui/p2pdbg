@@ -2,9 +2,9 @@
 <VisualStudioProject
 	ProjectType="Visual C++"
 	Version="9.00"
-	Name="p2pdbg"
-	ProjectGUID="{C3E46A03-8334-405F-9F93-93E9E0D68767}"
-	RootNamespace="p2pdbg"
+	Name="p2pserv"
+	ProjectGUID="{4584F8D9-3663-4948-BD49-BBDD8B5F58DA}"
+	RootNamespace="p2pserv"
 	Keyword="Win32Proj"
 	TargetFrameworkVersion="196613"
 	>
@@ -41,7 +41,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="../lib"
+				AdditionalIncludeDirectories="./lib"
 				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -62,7 +62,6 @@
 			<Tool
 				Name="VCLinkerTool"
 				LinkIncremental="1"
-				UACExecutionLevel="2"
 				GenerateDebugInformation="true"
 				SubSystem="2"
 				TargetMachine="1"
@@ -116,7 +115,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				EnableIntrinsicFunctions="true"
-				AdditionalIncludeDirectories="../lib"
+				AdditionalIncludeDirectories="./lib"
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS"
 				RuntimeLibrary="2"
 				EnableFunctionLevelLinking="true"
@@ -136,7 +135,6 @@
 			<Tool
 				Name="VCLinkerTool"
 				LinkIncremental="1"
-				UACExecutionLevel="2"
 				GenerateDebugInformation="true"
 				SubSystem="2"
 				OptimizeReferences="2"
@@ -175,23 +173,11 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
-				RelativePath=".\cmdlancher.cpp"
+				RelativePath=".\dbgserv.cpp"
 				>
 			</File>
 			<File
-				RelativePath=".\dbgclient.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\dbgclient.h"
-				>
-			</File>
-			<File
-				RelativePath=".\fastclient.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\fastclient.h"
+				RelativePath=".\dbgserv.h"
 				>
 			</File>
 			<File
@@ -217,10 +203,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\cmdlancher.h"
-				>
-			</File>
-			<File
 				RelativePath=".\resource.h"
 				>
 			</File>
@@ -235,50 +217,10 @@
 				>
 			</File>
 			<File
-				RelativePath=".\p2pdbg.rc"
+				RelativePath=".\p2pserv.rc"
 				>
 			</File>
 		</Filter>
-		<Filter
-			Name="view"
-			>
-			<File
-				RelativePath=".\clientview.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\clientview.h"
-				>
-			</File>
-			<File
-				RelativePath=".\dbgview.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\dbgview.h"
-				>
-			</File>
-			<File
-				RelativePath=".\fmtview.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\fmtview.h"
-				>
-			</File>
-			<File
-				RelativePath=".\logview.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\logview.h"
-				>
-			</File>
-		</Filter>
-		<File
-			RelativePath=".\res\cispack.exe"
-			>
-		</File>
 	</Files>
 	<Globals>
 	</Globals>

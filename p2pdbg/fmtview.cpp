@@ -1,9 +1,9 @@
 #include <Windows.h>
-#include <mstring.h>
-#include <json/json.h>
-#include <gdcharconv.h>
-#include "winsize.h"
-#include "common.h"
+#include "../ComLib/mstring.h"
+#include "../ComLib/json/json.h"
+#include "../ComLib/winsize.h"
+#include "../ComLib/common.h"
+#include "../ComLib/StrUtil.h"
 #include "resource.h"
 
 using namespace std;

@@ -2,9 +2,9 @@
 <VisualStudioProject
 	ProjectType="Visual C++"
 	Version="9.00"
-	Name="p2pdbg"
-	ProjectGUID="{C3E46A03-8334-405F-9F93-93E9E0D68767}"
-	RootNamespace="p2pdbg"
+	Name="ComLib"
+	ProjectGUID="{68EADB09-8337-4AC5-B8AF-64128F44D4D2}"
+	RootNamespace="ComLib"
 	Keyword="Win32Proj"
 	TargetFrameworkVersion="196613"
 	>
@@ -20,7 +20,7 @@
 			Name="Debug|Win32"
 			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
 			IntermediateDirectory="$(ConfigurationName)"
-			ConfigurationType="1"
+			ConfigurationType="4"
 			CharacterSet="1"
 			>
 			<Tool
@@ -41,8 +41,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="../lib"
-				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS"
+				PreprocessorDefinitions="WIN32;_DEBUG;_LIB"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="3"
@@ -60,18 +59,10 @@
 				Name="VCPreLinkEventTool"
 			/>
 			<Tool
-				Name="VCLinkerTool"
-				LinkIncremental="1"
-				UACExecutionLevel="2"
-				GenerateDebugInformation="true"
-				SubSystem="2"
-				TargetMachine="1"
+				Name="VCLibrarianTool"
 			/>
 			<Tool
 				Name="VCALinkTool"
-			/>
-			<Tool
-				Name="VCManifestTool"
 			/>
 			<Tool
 				Name="VCXDCMakeTool"
@@ -83,9 +74,6 @@
 				Name="VCFxCopTool"
 			/>
 			<Tool
-				Name="VCAppVerifierTool"
-			/>
-			<Tool
 				Name="VCPostBuildEventTool"
 			/>
 		</Configuration>
@@ -93,7 +81,7 @@
 			Name="Release|Win32"
 			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
 			IntermediateDirectory="$(ConfigurationName)"
-			ConfigurationType="1"
+			ConfigurationType="4"
 			CharacterSet="1"
 			WholeProgramOptimization="1"
 			>
@@ -116,8 +104,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				EnableIntrinsicFunctions="true"
-				AdditionalIncludeDirectories="../lib"
-				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS"
+				PreprocessorDefinitions="WIN32;NDEBUG;_LIB"
 				RuntimeLibrary="2"
 				EnableFunctionLevelLinking="true"
 				UsePrecompiledHeader="0"
@@ -134,20 +121,10 @@
 				Name="VCPreLinkEventTool"
 			/>
 			<Tool
-				Name="VCLinkerTool"
-				LinkIncremental="1"
-				UACExecutionLevel="2"
-				GenerateDebugInformation="true"
-				SubSystem="2"
-				OptimizeReferences="2"
-				EnableCOMDATFolding="2"
-				TargetMachine="1"
+				Name="VCLibrarianTool"
 			/>
 			<Tool
 				Name="VCALinkTool"
-			/>
-			<Tool
-				Name="VCManifestTool"
 			/>
 			<Tool
 				Name="VCXDCMakeTool"
@@ -157,9 +134,6 @@
 			/>
 			<Tool
 				Name="VCFxCopTool"
-			/>
-			<Tool
-				Name="VCAppVerifierTool"
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
@@ -175,35 +149,23 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
-				RelativePath=".\cmdlancher.cpp"
+				RelativePath=".\common.cpp"
 				>
 			</File>
 			<File
-				RelativePath=".\dbgclient.cpp"
+				RelativePath=".\LockBase.h"
 				>
 			</File>
 			<File
-				RelativePath=".\dbgclient.h"
+				RelativePath=".\mstring.cpp"
 				>
 			</File>
 			<File
-				RelativePath=".\fastclient.cpp"
+				RelativePath=".\StrUtil.cpp"
 				>
 			</File>
 			<File
-				RelativePath=".\fastclient.h"
-				>
-			</File>
-			<File
-				RelativePath=".\logic.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\logic.h"
-				>
-			</File>
-			<File
-				RelativePath=".\main.cpp"
+				RelativePath=".\winsize.cpp"
 				>
 			</File>
 		</Filter>
@@ -213,15 +175,19 @@
 			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}"
 			>
 			<File
-				RelativePath=".\cmddef.h"
+				RelativePath=".\common.h"
 				>
 			</File>
 			<File
-				RelativePath=".\cmdlancher.h"
+				RelativePath=".\mstring.h"
 				>
 			</File>
 			<File
-				RelativePath=".\resource.h"
+				RelativePath=".\StrUtil.h"
+				>
+			</File>
+			<File
+				RelativePath=".\winsize.h"
 				>
 			</File>
 		</Filter>
@@ -230,53 +196,61 @@
 			Filter="rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav"
 			UniqueIdentifier="{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}"
 			>
-			<File
-				RelativePath=".\res\main.ico"
-				>
-			</File>
-			<File
-				RelativePath=".\p2pdbg.rc"
-				>
-			</File>
 		</Filter>
 		<Filter
-			Name="view"
+			Name="json"
 			>
 			<File
-				RelativePath=".\clientview.cpp"
+				RelativePath=".\json\config.h"
 				>
 			</File>
 			<File
-				RelativePath=".\clientview.h"
+				RelativePath=".\json\features.h"
 				>
 			</File>
 			<File
-				RelativePath=".\dbgview.cpp"
+				RelativePath=".\json\forwards.h"
 				>
 			</File>
 			<File
-				RelativePath=".\dbgview.h"
+				RelativePath=".\json\json.h"
 				>
 			</File>
 			<File
-				RelativePath=".\fmtview.cpp"
+				RelativePath=".\json\json_batchallocator.h"
 				>
 			</File>
 			<File
-				RelativePath=".\fmtview.h"
+				RelativePath=".\json\json_reader.cpp"
 				>
 			</File>
 			<File
-				RelativePath=".\logview.cpp"
+				RelativePath=".\json\json_value.cpp"
 				>
 			</File>
 			<File
-				RelativePath=".\logview.h"
+				RelativePath=".\json\json_valueiterator.inl"
+				>
+			</File>
+			<File
+				RelativePath=".\json\json_writer.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\json\reader.h"
+				>
+			</File>
+			<File
+				RelativePath=".\json\value.h"
+				>
+			</File>
+			<File
+				RelativePath=".\json\writer.h"
 				>
 			</File>
 		</Filter>
 		<File
-			RelativePath=".\res\cispack.exe"
+			RelativePath=".\ReadMe.txt"
 			>
 		</File>
 	</Files>

@@ -1,8 +1,8 @@
 #include <WinSock2.h>
 #include <shlobj.h>
 #include <Shlwapi.h>
-#include <json/json.h>
-#include <gdcharconv.h>
+#include "../ComLib/json/json.h"
+#include "../ComLib/StrUtil.h"
 #include "logic.h"
 #include "cmddef.h"
 #include "dbgview.h"
@@ -53,7 +53,7 @@ mstring CWorkLogic::GetDevUnique(){
         return szBuffer;
     }
     srand(GetTickCount());
-    mstring strDevUnique = fmt(
+    mstring strDevUnique = FormatW(
         L"%x%x%x%x%x%x%x%x-%x%x%x%x-%x%x%x%x-%x%x%x%x%x%x%x%x",
         rand() % 0xf, rand() % 0xf, rand() % 0xf, rand() % 0xf, 
         rand() % 0xf, rand() % 0xf, rand() % 0xf, rand() % 0xf,
@@ -77,8 +77,8 @@ bool CWorkLogic::StartWork()
     m_bFtpTransfer = false;;
     m_strDevUnique = GetDevUnique();
     m_uLocalPort = PORT_LOCAL;
-    m_strServIp = GetIpFromDomain(DOMAIN_SERV);
-    //m_strServIp = "10.10.16.38";
+    //m_strServIp = GetIpFromDomain(DOMAIN_SERV);
+    m_strServIp = "192.168.0.103";
     m_MsgServ.InitClient(m_strServIp, PORT_MSG_SERV, 1, &m_MsgHandler);
     m_FtpServ.InitClient(m_strServIp, PORT_FTP_SERV, 1, &m_FtpHandler);
     m_strLocalIp = m_MsgServ.GetLocalIp();
@@ -218,7 +218,7 @@ string CWorkLogic::GetIpFromDomain(const string &strDomain)
     HOSTENT *host_entry = gethostbyname(strDomain.c_str());
     if(host_entry != NULL)
     {
-        return fmt(
+        return FormatA(
             "%d.%d.%d.%d",
             (host_entry->h_addr_list[0][0]&0x00ff),
             (host_entry->h_addr_list[0][1]&0x00ff),
@@ -458,7 +458,7 @@ wstring CWorkLogic::GetFtpLocalPath(const ustring &wstrDesc, const ustring &wstr
     SYSTEMTIME time = {0};
     GetLocalTime(&time);
 
-    ustring wstrTmpFile = fmt(
+    ustring wstrTmpFile = FormatW(
         L"%04d%02d%02d%02d%02d%02d_%ls",
         time.wYear,
         time.wMonth,
