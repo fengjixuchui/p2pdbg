@@ -1,6 +1,8 @@
 # p2pdbg-通用android app调试器
 本项目的源码：https://gitee.com/lougd/p2pdbg
 
+github地址:https://github.com/lougd/p2pdbg.git
+
 联系作者：qq:412776488 mail:lougdhr@126.com
 
 如果觉得这个项目对你有用，请点个star，感谢！
